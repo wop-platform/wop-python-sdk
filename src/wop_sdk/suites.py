@@ -14,11 +14,9 @@ _KEY_ALGORITHMS = {
     "RSA3072": ("RSA", 3072),
     "RSA4096": ("RSA", 4096),
     "SM2": ("SM", 0),
-}
-
-# 摘要算法 → (族, header 标签)
+# 摘要算法 → (族, header 标签)；族与密钥算法族同名（I5 比对基准）
 _DIGEST_ALGORITHMS = {
-    "SHA256": ("INTL", "sha-256"),
+    "SHA256": ("RSA", "sha-256"),
     "SM3": ("SM", "sm3"),
 }
 
