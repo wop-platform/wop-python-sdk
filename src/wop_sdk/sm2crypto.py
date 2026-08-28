@@ -100,3 +100,9 @@ def _xor_kdf(data: bytes, xy_hex: str) -> bytes:
         raise DecryptError("解密失败")
     form = "%%0%dx" % (len(data) * 2)
     return bytes.fromhex(form % (int(data.hex(), 16) ^ int(t, 16)))
+
+
+def sm2_derive_public_hex(private_key_hex: str) -> str:
+    """由私钥标量 d 推导公钥 X‖Y（128 hex，签名 ZA 需要）。"""
+    ops = CryptSM2(private_key_hex, "00" * 128)
+    return cast(str, ops._kg(int(private_key_hex, 16), ops.ecc_table["g"]))
