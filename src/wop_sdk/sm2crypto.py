@@ -95,7 +95,7 @@ def sm2_decrypt(ops: Sm2Ops, cipher: bytes) -> bytes:
 
 def _xor_kdf(data: bytes, xy_hex: str) -> bytes:
     """SM2 KDF（x2‖y2 作种子）与数据异或；密钥流全零视为失败（概率 2^-128）。"""
-    t = _sm3.sm3_kdf(xy_hex, len(data))
+    t = _sm3.sm3_kdf(xy_hex.encode("utf-8"), len(data))
     if int(t, 16) == 0:
         raise DecryptError("解密失败")
     form = "%%0%dx" % (len(data) * 2)
