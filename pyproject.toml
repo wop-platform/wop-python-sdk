@@ -9,13 +9,15 @@ description = "WOP 商户侧官方 Python SDK：协议核心（签名/摘要/数
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "wop-platform" }]
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 keywords = ["wop", "gateway", "sm2", "sm4-gcm", "rsa", "digital-envelope"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

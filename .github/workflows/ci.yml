@@ -11,12 +11,12 @@ on:
 
 jobs:
   test:
-    # 轴 1：Python 解释器矩阵（3.11 = 声明下界；3.14 = 当前最新稳定），依赖取最新
+    # 轴 1：Python 解释器矩阵（3.9 = 声明下界（spec §3 契约）；3.14 = 当前最新稳定），依赖取最新
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,9 +25,9 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          # pytest 属测试工具链而非运行时依赖，CI 显式安装
-          # （3.11+ 自带 tomllib，coverage 无需 [toml] extra）
-          pip install -e '.[httpx,requests]' pytest pytest-cov coverage
+          # pytest 属测试工具链而非运行时依赖，CI 显式安装；
+          # coverage[toml]：py<3.11 需 tomli 才能读 pyproject.toml 的 coverage 配置
+          pip install -e '.[httpx,requests]' pytest pytest-cov 'coverage[toml]'
       - name: Test with coverage gate (line+branch ≥ 98%, vector conformance must pass)
         run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
       - name: Coverage detail (line & branch)
@@ -43,13 +43,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.9"
       - name: Install pinned lower bounds
         run: |
           python -m pip install --upgrade pip
           pip install cryptography==41.0.0 gmssl==3.2.2 httpx==0.24.0 requests==2.28.0
           pip install -e . --no-deps
-          pip install pytest pytest-cov coverage
+          pip install pytest pytest-cov 'coverage[toml]'
       - name: Test with coverage gate at dependency lower bounds
         run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
 
