@@ -9,6 +9,12 @@ on:
     - cron: "0 3 * * 1"
   workflow_dispatch:
 
+# 最低权限基线：GITHUB_TOKEN 默认权限收窄为只读。
+# test/oldest-deps 仅需 checkout（contents: read）；
+# notify-failure/notify-recovery 作业级 permissions 整体覆盖此基线，不受影响。
+permissions:
+  contents: read
+
 jobs:
   test:
     # 轴 1：Python 解释器矩阵（3.9 = 声明下界（spec §3 契约）；3.14 = 当前最新稳定），依赖取最新
