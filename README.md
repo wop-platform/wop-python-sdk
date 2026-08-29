@@ -4,7 +4,6 @@ WOP 网关商户侧官方 Python 客户端库：封装协议核心（套件解�
 L2 数字信封 / 验签解密）与可插拔 HTTP 适配层，使商户无需理解 canonicalRequest、
 算法套件推导与线上字节格式即可安全对接网关。
 
-- 版本：0.1.0（MIT License）
 - 协议真源：[crypto-strategy-spec.md](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-strategy-spec.md)（v0.3-reviewed）+ [wop-sdk-spec.md](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)（v1.0-ratified）
 - 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 为字节级副本，禁手改）
 - Python ≥ 3.9

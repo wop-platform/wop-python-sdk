@@ -6,7 +6,6 @@ envelope / verify-and-decrypt) plus a pluggable HTTP adapter layer, so merchants
 integrate securely without understanding canonicalRequest, suite derivation or the
 wire byte formats.
 
-- Version: 0.1.0 (MIT License)
 - Python ≥ 3.9
 - All three suites supported: `WOP-RSA3072-SHA256` / `WOP-RSA4096-SHA256` / `WOP-SM2-SM3`
 - Crypto dependencies (the single designated path): `cryptography` (RSA/AES) +
