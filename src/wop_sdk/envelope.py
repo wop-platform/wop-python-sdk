@@ -151,7 +151,11 @@ def open_l2(suite: Suite, wrap_priv: KeyMaterial, wire_body: bytes, dek_b64u: st
         wrapped = b64url_decode(dek_b64u)
     except ValueError:
         raise DecryptError() from None
-    payload = unwrap_dek(suite, wrap_priv, wrapped).decode("utf-8", errors="strict")
+    try:
+        payload = unwrap_dek(suite, wrap_priv, wrapped).decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        # 解包成功但载荷非 UTF-8 → 与解包失败同归模糊（I7），不得向商户层逃逸
+        raise DecryptError() from None
     key, iv = parse_dek_payload(suite, payload)
     try:
         obj = json.loads(wire_body)
