@@ -3,14 +3,37 @@
 
 - ``Transport``：协议接口，商户自带栈时可直接实现或消费 RequestDraft；
 - ``send_draft``：RequestDraft → Transport（URL 拼接归此，适配器只面对完整请求）；
+- ``MAX_RESPONSE_BYTES`` / ``read_capped``：响应体 11MB 上限，流式读取中生效；
 - stdlib urllib 适配器随主包；httpx / requests 适配器为 peer 依赖（extras）。
 """
 from dataclasses import dataclass
-from typing import Dict, Optional, Protocol, runtime_checkable
+from typing import Dict, Iterable, Optional, Protocol, runtime_checkable
 
 from ..client import RequestDraft
+from ..errors import ProtocolFormatError
 
-__all__ = ["HttpResponse", "Transport", "UrllibTransport", "send_draft"]
+__all__ = ["HttpResponse", "MAX_RESPONSE_BYTES", "Transport", "UrllibTransport", "read_capped", "send_draft"]
+
+# 响应体上限 11MB：与网关 maxContentLength 及各语言 SDK（dotnet/Go 11<<20）对齐；
+# 必须在读取过程中生效（流式计数），而非整体缓冲后检查
+MAX_RESPONSE_BYTES = 11 << 20
+_READ_CHUNK = 1 << 16
+
+
+def read_capped(chunks: Iterable[bytes]) -> bytes:
+    """流式消费响应体分块并累计；累计越上限即刻抛 ProtocolFormatError。
+
+    逐块检查（读取过程中生效）：任何一 chunk 使累计超过 MAX_RESPONSE_BYTES 即中断，
+    不再把无限/超大响应整体缓冲进内存。
+    """
+    buf = bytearray()
+    for chunk in chunks:
+        buf += chunk
+        if len(buf) > MAX_RESPONSE_BYTES:
+            raise ProtocolFormatError(
+                "响应体超过传输层上限 %d 字节" % MAX_RESPONSE_BYTES
+            )
+    return bytes(buf)
 
 
 @dataclass
