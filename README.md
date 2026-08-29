@@ -5,6 +5,8 @@ L2 数字信封 / 验签解密）与可插拔 HTTP 适配层，使商户无需�
 算法套件推导与线上字节格式即可安全对接网关。
 
 - 版本：0.1.0（MIT License）
+- 协议真源：[crypto-strategy-spec.md](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-strategy-spec.md)（v0.3-reviewed）+ [wop-sdk-spec.md](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)（v1.0-ratified）
+- 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 为字节级副本，禁手改）
 - Python ≥ 3.9
 - 三套件全支持：`WOP-RSA3072-SHA256` / `WOP-RSA4096-SHA256` / `WOP-SM2-SM3`
 - 密码依赖（唯一指定路径）：`cryptography`（RSA/AES）+ `gmssl ≥ 3.2.2`（SM2/SM3/SM4）
