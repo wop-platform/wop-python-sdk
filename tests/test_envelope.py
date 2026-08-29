@@ -259,6 +259,15 @@ class TestSealOpenL2:
         with pytest.raises(DecryptError):
             open_l2(RSA3072, rsa_pair[1], wire, "abc=")  # F7 严格无填充
 
+    def test_open_dek_payload_invalid_utf8_blurred(self, rsa_pair):
+        # I7：解包成功但 DEK 载荷非 UTF-8 → 与解包失败同归模糊，不得向商户层逃逸
+        dek_b64u = b64url_encode(
+            wrap_dek(RSA3072, rsa_pair[0], b"\xff\xfe\x80", csprng=lambda n: b"\xab" * n)
+        )
+        wire = json.dumps({"encrypted": b64url_encode(b"x" * 48)}).encode()
+        with pytest.raises(DecryptError):
+            open_l2(RSA3072, rsa_pair[1], wire, dek_b64u)
+
     def test_open_cross_family_dek_consistent_error(self, sm2_pair, vectors):
         # RSA 套件 DEK 被塞进 SM 载荷：解包成功、alg 比对在 bulk 解密前明确拒绝
         v = _vec(vectors, "dekPayload", "dek-sm2")
