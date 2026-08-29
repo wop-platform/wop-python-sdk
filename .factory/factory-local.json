@@ -1,0 +1,41 @@
+{
+  "description": "工厂本地化配置（M4 本地化外置 + 拆分前置 ADR-009）：周界/判据措辞/门命令/prompt 仓库参数/上游指针是数据不是代码——guard.py / factory_lib.py / 链脚本 / prompts 因此零本地化、按 DISTRIBUTION.json full 分发；本文件每仓一份（skip 分发，永不跨仓覆盖）。fail-closed：缺失/损坏/缺键 = 使用方直接非零退出。周界仍须与 MISSION.md「周界（PERIMETER）」一致——guard.self_check 每次运行强制核对（MISSION 是真相源，本文件是机械化载体）；改本文件后必须重跑 .factory/mutations/run.py 重证 kill rate，evidence-stamp.json 指纹绑定会强制这一点。",
+  "perimeter": [
+    "MISSION.md",
+    "README.md",
+    "README.en.md",
+    "CONTRIBUTING.md",
+    ".factory/",
+    "scripts/",
+    "pyproject.toml",
+    ".github/",
+    ".gitignore",
+    "src/wop_sdk/canonical.py",
+    "src/wop_sdk/digest.py",
+    "src/wop_sdk/encoding.py",
+    "src/wop_sdk/envelope.py",
+    "src/wop_sdk/keys.py",
+    "src/wop_sdk/signature.py",
+    "src/wop_sdk/sm2crypto.py",
+    "src/wop_sdk/sm4gcm.py",
+    "src/wop_sdk/suites.py"
+  ],
+  "reject_guidance": {
+    "a": "判据a（使命一致）：写明落点——SDK 代码（src/wop_sdk/ 工程面：client/transports/errors）、测试（tests/）或文档（docs/）中的哪个文件/模块；",
+    "b": "判据b（可判定）：把完成标准写成可机械验证的形式——验收 = 具体测试的断言（pytest 中的测试类/方法名、逐条清单、file:line 级差异），避免「持续 / 优化 / 修收」类开放措辞；doc-only（纯文档）改动在验证门零投影——补可断言测试或转人工 PR；",
+    "c": "判据c（不触周界）：触及 PERIMETER 的部分拆成独立 issue 走人类 PR（清单见 MISSION.md；安全敏感面 套件解析/签名/摘要/数字信封/SM2/SM4-GCM/密钥/规范化与线上编码 默认全锁）；"
+  },
+  "repo_identity": "wop-python-sdk",
+  "reading_scopes": [
+    "README.md",
+    "docs/",
+    "pyproject.toml",
+    "src/"
+  ],
+  "review_basis": "CONTRIBUTING.md 规格引用（wop-specs/sdk/wop-sdk-spec.md）+ 既有测试形态",
+  "final_gate_cmd": "scripts/run_tests.sh --no-lock",
+  "pr_review_skills": [],
+  "upstream_repo": "wop-platform/wop-python-sdk",
+  "upstream_path": "~/sources/open-platform/wop-python-sdk",
+  "feedback_branch_prefix": "feedback/wop-python-sdk"
+}
