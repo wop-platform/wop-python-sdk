@@ -81,10 +81,10 @@ git push -q "$GIT_REMOTE" "$BRANCH"
 gh workflow run ci.yml -R "$REPO" --ref "$BRANCH"
 [ "$(wait_run)" = "success" ] || die "绿 run 预期 success"
 
-log "5/6 断言自动关单（issue #$ISSUE）"
+log "5/6 断言自动关单（issue #${ISSUE}）"
 sleep 5
 STATE="$(gh issue view "$ISSUE" -R "$REPO" --json state --jq .state)"
-[ "$STATE" = "CLOSED" ] || die "绿 run 后 issue #$ISSUE 仍为 $STATE"
+[ "$STATE" = "CLOSED" ] || die "绿 run 后 issue #${ISSUE} 仍为 $STATE"
 
 log "6/6 清理演练分支"
-log "PASS：开单(#$ISSUE) → 关单 闭环验证通过"
+log "PASS：开单(#${ISSUE}) → 关单 闭环验证通过"
