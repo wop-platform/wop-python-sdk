@@ -7,7 +7,7 @@ L2 数字信封 / 验签解密）与可插拔 HTTP 适配层，使商户无需�
 - 版本：0.1.0（MIT License）
 - 协议真源：[crypto-strategy-spec.md](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-strategy-spec.md)（v0.3-reviewed）+ [wop-sdk-spec.md](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)（v1.0-ratified）
 - 向量真源：[crypto-vectors.json](https://github.com/wop-platform/wop-specs/blob/main/crypto/crypto-vectors.json)（本仓 fixture 为字节级副本，禁手改）
-- Python ≥ 3.9
+- Python ≥ 3.11
 - 三套件全支持：`WOP-RSA3072-SHA256` / `WOP-RSA4096-SHA256` / `WOP-SM2-SM3`
 - 密码依赖（唯一指定路径）：`cryptography`（RSA/AES）+ `gmssl ≥ 3.2.2`（SM2/SM3/SM4）
 - 主包零额外依赖；HTTP 适配器以 peer 依赖交付（`wop-sdk[httpx]` / `wop-sdk[requests]`）
@@ -100,7 +100,7 @@ python3 -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
 覆盖：RSA3072/4096 与 SM2 签名字节级断言、OAEP 包装/解包、AES-256-GCM 与 SM4-GCM
 密文字节级断言、SM3/SHA-256 摘要、DEK 载荷组装、digest 头全部格式规则；负向量含
 tamper / 跨族 / 63B、65B 签名 / 带 `=` 的 base64url / C1C2C3 旧国标顺序 /
-MGF1-SHA1 陷阱密文，全部必须拒绝。CI（3.9 / 3.12 矩阵）执行同一命令。
+MGF1-SHA1 陷阱密文，全部必须拒绝。CI（3.11–3.14 矩阵）执行同一命令。
 
 ## 错误处理与模糊化
 

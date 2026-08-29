@@ -7,7 +7,7 @@ integrate securely without understanding canonicalRequest, suite derivation or t
 wire byte formats.
 
 - Version: 0.1.0 (MIT License)
-- Python ≥ 3.9
+- Python ≥ 3.11
 - All three suites supported: `WOP-RSA3072-SHA256` / `WOP-RSA4096-SHA256` / `WOP-SM2-SM3`
 - Crypto dependencies (the single designated path): `cryptography` (RSA/AES) +
   `gmssl ≥ 3.2.2` (SM2/SM3/SM4)
@@ -110,7 +110,7 @@ AES-256-GCM and SM4-GCM ciphertexts, SM3/SHA-256 digests, DEK payload assembly, 
 every digest-header format rule. Negative vectors include tampering, cross-family
 material, 63-byte / 65-byte signatures, base64url with `=`, the legacy C1C2C3
 ordering, and the MGF1-SHA1 trap ciphertext — all must be rejected. CI runs the
-same command on a 3.9 / 3.12 matrix.
+same command on a 3.11–3.14 matrix.
 
 ## Error Handling and Blurring
 
