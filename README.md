@@ -9,13 +9,13 @@ L2 数字信封 / 验签解密）与可插拔 HTTP 适配层，使商户无需�
 - Python ≥ 3.9
 - 三套件全支持：`WOP-RSA3072-SHA256` / `WOP-RSA4096-SHA256` / `WOP-SM2-SM3`
 - 密码依赖（唯一指定路径）：`cryptography`（RSA/AES）+ `gmssl ≥ 3.2.2`（SM2/SM3/SM4）
-- 主包零额外依赖；HTTP 适配器以 peer 依赖交付（`wop-sdk[httpx]` / `wop-sdk[requests]`）
+- 主包零额外依赖；HTTP 适配器以 peer 依赖交付（`wop-python-sdk[httpx]` / `wop-python-sdk[requests]`）
 
 ## 快速开始
 
 ```bash
-pip install wop-sdk            # 或从源码：pip install -e .
-pip install 'wop-sdk[httpx]'   # 可选：httpx peer 适配器（另含 requests extras）
+pip install wop-python-sdk            # 或从源码：pip install -e .
+pip install 'wop-python-sdk[httpx]'   # 可选：httpx peer 适配器（另含 requests extras）
 ```
 
 ```python

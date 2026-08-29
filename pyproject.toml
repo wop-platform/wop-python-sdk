@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "wop-sdk"
+name = "wop-python-sdk"
 version = "0.1.0"
 description = "WOP 商户侧官方 Python SDK：协议核心（签名/摘要/数字信封/验签解密）+ 可插拔 HTTP 适配层"
 readme = "README.md"

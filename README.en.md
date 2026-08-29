@@ -11,13 +11,13 @@ wire byte formats.
 - Crypto dependencies (the single designated path): `cryptography` (RSA/AES) +
   `gmssl ≥ 3.2.2` (SM2/SM3/SM4)
 - Zero extra runtime dependencies in the core; HTTP adapters ship as peer
-  dependencies (`wop-sdk[httpx]` / `wop-sdk[requests]`)
+  dependencies (`wop-python-sdk[httpx]` / `wop-python-sdk[requests]`)
 
 ## Quick Start
 
 ```bash
-pip install wop-sdk            # or from source: pip install -e .
-pip install 'wop-sdk[httpx]'   # optional: httpx peer adapter (requests extras also available)
+pip install wop-python-sdk            # or from source: pip install -e .
+pip install 'wop-python-sdk[httpx]'   # optional: httpx peer adapter (requests extras also available)
 ```
 
 ```python
