@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""requests peer 适配器（extras：``pip install 'wop-sdk[requests]'``）。"""
+"""requests peer 适配器（extras：``pip install 'wop-python-sdk[requests]'``）。"""
 from typing import Dict, Optional
 
 from . import HttpResponse, _READ_CHUNK, read_capped
@@ -17,7 +17,7 @@ class RequestsTransport:
             import requests
         except ImportError as exc:  # pragma: no cover —— 视环境而定
             raise ImportError(
-                "requests 未安装；peer 适配器请执行 pip install 'wop-sdk[requests]'"
+                "requests 未安装；peer 适配器请执行 pip install 'wop-python-sdk[requests]'"
             ) from exc
         self._session = session if session is not None else requests.Session()
 

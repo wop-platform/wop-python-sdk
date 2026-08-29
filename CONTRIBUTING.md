@@ -2,9 +2,9 @@
 
 ## 1. 欢迎与定位
 
-本仓库是 WOP 网关**商户侧官方 Python SDK**（`wop-sdk`），实现协议核心（套件解析 /
+本仓库是 WOP 网关**商户侧官方 Python SDK**（`wop-python-sdk`），实现协议核心（套件解析 /
 结构化签名 / 内容摘要 / L2 数字信封 / 验签解密）与可插拔 HTTP 适配层。所有协议行为
-以 [WOP 商户 SDK 规格 v1.0（ratified）](https://github.com/wop-platform/gtsp-wop-gateway/blob/main/docs/wop-sdk-spec.md)
+以 [WOP 商户 SDK 规格 v1.0（ratified）](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)
 为准（功能面 F1–F9、验收 A1–A7、工程约定 §4）；规格与本实现冲突时，先在规格仓库
 提出议题，再动代码。
 
@@ -13,7 +13,7 @@
 - Python ≥ 3.9（CI 矩阵：3.9 / 3.12，两个版本都必须过）
 - 运行时依赖白名单（仅此两项，见任务书 E5）：`cryptography >= 41`、`gmssl >= 3.2.2`
 - HTTP 适配器为 peer 依赖：`httpx >= 0.24` / `requests >= 2.28`（extras，不进核心依赖面）
-- 测试工具链：`pytest` + `pytest-cov` + `coverage[toml]`（py<3.11 需 tomli 才能读
+- 测试工具链：`pytest` + `pytest-bdd` + `pytest-cov` + `coverage[toml]`（py<3.11 需 tomli 才能读
   pyproject 的 coverage 配置）
 - 包管理：pip + pyproject.toml（setuptools 后端）
 
@@ -23,7 +23,7 @@
 
 ```bash
 python -m pip install --upgrade pip
-pip install -e '.[httpx]' pytest pytest-cov 'coverage[toml]'
+pip install -e '.[httpx]' pytest pytest-bdd pytest-cov 'coverage[toml]'
 
 # 测试 + 覆盖率门禁（行 + 分支双维度 ≥ 98%，向量合规测试必须全绿）
 python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
@@ -93,10 +93,10 @@ fix(sm2): reject DER-encoded signature per F7
 
 1. 确认 `pyproject.toml` 的 `version` 已更新为目标版本 `X.Y.Z`；
 2. 打 tag 并推送：`git tag vX.Y.Z && git push origin vX.Y.Z`；
-3. tag `v*` 触发 `.github/workflows/release.yml`：checkout → 装依赖 →
-   **完整复跑 CI 同款测试与覆盖率门禁** → `python -m build` →
-   `pypa/gh-action-pypi-publish` 发布到 PyPI；
-4. 发布凭证走 GitHub Secrets（`PYPI_TOKEN`，配置于仓库 `wop-sdk` 环境或仓库级
+3. tag `v*` 触发 `.github/workflows/release.yml`：checkout → **tag 与 pyproject 版本
+   一致性校验（不一致即 fail）** → 装依赖 → **完整复跑 CI 同款测试与覆盖率门禁** →
+   `python -m build` → `pypa/gh-action-pypi-publish` 发布到 PyPI；
+4. 发布凭证走 GitHub Secrets（`PYPI_TOKEN`，配置于仓库 `wop-python-sdk` 环境或仓库级
    Secrets），**绝不写入仓库明文**；发布步骤位于测试全绿之后，失败不留半发布状态。
 
-发布产物：PyPI `wop-sdk`（sdist + wheel）。
+发布产物：PyPI `wop-python-sdk`（sdist + wheel）。

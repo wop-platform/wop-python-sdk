@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""httpx peer 适配器（extras：``pip install 'wop-sdk[httpx]'``）。"""
+"""httpx peer 适配器（extras：``pip install 'wop-python-sdk[httpx]'``）。"""
 from typing import Dict, Optional
 
 from . import HttpResponse, _READ_CHUNK, read_capped
@@ -17,7 +17,7 @@ class HttpxTransport:
             import httpx
         except ImportError as exc:  # pragma: no cover —— 视环境而定
             raise ImportError(
-                "httpx 未安装；peer 适配器请执行 pip install 'wop-sdk[httpx]'"
+                "httpx 未安装；peer 适配器请执行 pip install 'wop-python-sdk[httpx]'"
             ) from exc
         self._client = client if client is not None else httpx.Client()
 
