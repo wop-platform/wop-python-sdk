@@ -71,15 +71,15 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           TITLE="CI 失败跟踪（自动开单）"
-          FAILED=$(gh run view "$RUN_ID" --json jobs \
+          FAILED=$(gh run view "$RUN_ID" -R "$GITHUB_REPOSITORY" --json jobs \
             --jq '.jobs[] | select(.conclusion=="failure") | .name' | sed 's/^/  - /')
           BODY=$(printf '## CI 失败\n- 触发：%s\n- commit：[%s](https://github.com/%s/commit/%s)\n- run：%s\n- 失败 job：\n%s\n\n此 issue 由 CI 自动创建/追加；工作流恢复绿后将自动关闭。' \
             "$EVENT" "$SHA" "$GITHUB_REPOSITORY" "$SHA" "$RUN_URL" "$FAILED")
-          NUMBER=$(gh issue list --state open --search "CI 失败跟踪 in:title" --json number --jq '.[0].number')
+          NUMBER=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "CI 失败跟踪 in:title" --json number --jq '.[0].number')
           if [ -n "$NUMBER" ]; then
-            gh issue comment "$NUMBER" --body "$BODY"
+            gh issue comment "$NUMBER" -R "$GITHUB_REPOSITORY" --body "$BODY"
           else
-            gh issue create --title "$TITLE" --body "$BODY"
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
           fi
 
   notify-recovery:
@@ -95,7 +95,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          NUMBER=$(gh issue list --state open --search "CI 失败跟踪 in:title" --json number --jq '.[0].number')
+          NUMBER=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "CI 失败跟踪 in:title" --json number --jq '.[0].number')
           if [ -n "$NUMBER" ]; then
-            gh issue close "$NUMBER" --comment "CI 已恢复绿：$RUN_URL"
+            gh issue close "$NUMBER" -R "$GITHUB_REPOSITORY" --comment "CI 已恢复绿：$RUN_URL"
           fi
