@@ -7,6 +7,7 @@
 - DEK 载荷：alg$base64url(key)$base64url(iv)；alg 族比对在解包后、bulk 解密前（D8/I3）；
 - 解密失败（GCM tag、KDF、C3、OAEP）对外一律"解密失败"（I7 模糊化）。
 """
+import hashlib
 import json
 import os
 from typing import Callable, Tuple, Union, cast
@@ -73,10 +74,46 @@ def _oaep_params() -> _rsa_padding.OAEP:
 
 
 def wrap_dek(suite: Suite, wrap_pub: KeyMaterial, payload: bytes, csprng: Csprng = os.urandom) -> bytes:
-    """DEK 非对称包装（出向，平台公钥）。SM2 的 k 走 csprng（I4）。"""
+    """DEK 非对称包装（出向，平台公钥）。SM2 的 k 与 RSA-OAEP 的 seed 均走 csprng
+    （I4 + interop 合同：OAEP-from-stream 确定——确定性钩子须覆盖全部随机消费点）。"""
     if suite.family == "RSA":
-        return cast(rsa.RSAPublicKey, wrap_pub).encrypt(payload, _oaep_params())
+        return _rsa_oaep_encrypt_from_stream(cast(rsa.RSAPublicKey, wrap_pub), payload, csprng)
     return sm2_encrypt(cast(Sm2Ops, wrap_pub), csprng, payload)
+
+
+def _mgf1_sha256(seed: bytes, length: int) -> bytes:
+    """MGF1（SHA-256，RFC 8017 B.2.1）。"""
+    out = bytearray()
+    counter = 0
+    while len(out) < length:
+        out.extend(hashlib.sha256(seed + counter.to_bytes(4, "big")).digest())
+        counter += 1
+    return bytes(out[:length])
+
+
+def _rsa_oaep_encrypt_from_stream(
+    pub: rsa.RSAPublicKey, message: bytes, csprng: Csprng
+) -> bytes:
+    """RSAES-OAEP-ENCRYPT（RFC 8017 7.1.1）：摘要/MGF1 均钉死 SHA-256、空 label（F2/D10），
+    seed 显式取自 csprng——与 Go EncryptOAEP(hash, random, …) 的随机流消费位逐字节对齐
+    （interop/v1：RSA L2 build 样本 byte-exact 的前提）。
+    """
+    h_len = 32  # SHA-256 摘要长
+    nums = pub.public_numbers()
+    k = (nums.n.bit_length() + 7) // 8
+    if len(message) > k - 2 * h_len - 2:
+        raise ValueError("OAEP 载荷超长：%d > %d" % (len(message), k - 2 * h_len - 2))
+    l_hash = hashlib.sha256(b"").digest()  # 空 label
+    seed = csprng(h_len)
+    ps = b"\x00" * (k - len(message) - 2 * h_len - 2)
+    db = l_hash + ps + b"\x01" + message
+    db_mask = _mgf1_sha256(seed, k - h_len - 1)
+    masked_db = bytes(a ^ b for a, b in zip(db, db_mask))
+    seed_mask = _mgf1_sha256(masked_db, h_len)
+    masked_seed = bytes(a ^ b for a, b in zip(seed, seed_mask))
+    em = b"\x00" + masked_seed + masked_db
+    m = int.from_bytes(em, "big")
+    return pow(m, nums.e, nums.n).to_bytes(k, "big")
 
 
 def unwrap_dek(suite: Suite, wrap_priv: KeyMaterial, wrapped: bytes) -> bytes:
@@ -146,24 +183,36 @@ def seal_l2(
 
 
 def open_l2(suite: Suite, wrap_priv: KeyMaterial, wire_body: bytes, dek_b64u: str) -> bytes:
-    """L2 解密（F6 第 3–5 步）：DEK 解包（模糊）→ alg 族比对（明确）→ bulk 解密（模糊）。"""
+    """L2 解密（F6 第 4–6 步）：DEK 解包（模糊）→ alg 族比对（明确）→ bulk 解密（模糊）。
+
+    错误分类（playbook §0 / interop 合同）：
+    - 信封 JSON 形态与各 base64url 段 = 公开结构知识 → 解析类明确（P2/n12）；
+    - DEK 载荷为解包后明文，除 alg 跨族（D8 明确）外一律解密类模糊（I7，P3/n13）。
+    """
     try:
         wrapped = b64url_decode(dek_b64u)
     except ValueError:
-        raise DecryptError() from None
+        raise ProtocolFormatError("x-wop-encrypt 的 dek 值非合法 base64url（F7）") from None
     try:
         payload = unwrap_dek(suite, wrap_priv, wrapped).decode("utf-8", errors="strict")
     except UnicodeDecodeError:
         # 解包成功但载荷非 UTF-8 → 与解包失败同归模糊（I7），不得向商户层逃逸
         raise DecryptError() from None
-    key, iv = parse_dek_payload(suite, payload)
+    try:
+        key, iv = parse_dek_payload(suite, payload)
+    except DekConsistencyError:
+        raise  # alg 跨族：解包后明文内的公开映射知识，明确（D8/I3）
+    except ProtocolFormatError:
+        # 载荷结构在解包后才可见，属密钥参与层；除 alg 跨族外一律归入解密类
+        # 模糊（I7 保守默认，interop 合同 n13 / playbook P3）
+        raise DecryptError() from None
     try:
         obj = json.loads(wire_body)
         encrypted = obj["encrypted"]
     except Exception:
-        raise DecryptError() from None
+        raise ProtocolFormatError("L2 请求体须为含 encrypted 字段的 JSON 信封") from None
     try:
         cipher_tag = b64url_decode(encrypted)
     except (ValueError, TypeError):
-        raise DecryptError() from None
+        raise ProtocolFormatError("L2 请求体 encrypted 字段非合法 base64url（F7）") from None
     return message_decrypt(suite, key, iv, cipher_tag)
