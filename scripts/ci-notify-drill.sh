@@ -32,7 +32,9 @@ command -v gh >/dev/null || die "需要 gh CLI"
 ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 wait_run() {  # 等待分支最新 dispatch run 结束，输出 conclusion
-  local run_id=""
+  # 注意：gh run watch 在非交互终端 + pending 态会提前退出，不可依赖——
+  # 直接轮询 conclusion 直到非空（queued/in_progress 均为空）
+  local run_id="" conclusion=""
   for _ in $(seq 1 30); do
     run_id="$(gh run list -R "$REPO" --branch "$BRANCH" --event workflow_dispatch \
       --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)"
@@ -40,8 +42,13 @@ wait_run() {  # 等待分支最新 dispatch run 结束，输出 conclusion
     sleep 2
   done
   [ -n "$run_id" ] || die "未发现 dispatch run"
-  gh run watch "$run_id" -R "$REPO" >/dev/null 2>&1 || true
-  gh run view "$run_id" -R "$REPO" --json conclusion --jq .conclusion
+  for _ in $(seq 1 90); do
+    conclusion="$(gh run view "$run_id" -R "$REPO" --json conclusion \
+      --jq '.conclusion // ""' 2>/dev/null || true)"
+    [ -n "$conclusion" ] && { echo "$conclusion"; return; }
+    sleep 10
+  done
+  die "run $run_id 轮询超时未结束"
 }
 
 open_issue() {  # 输出当前 open 跟踪 issue 编号（空=无）
