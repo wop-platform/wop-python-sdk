@@ -27,7 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           # pytest 属测试工具链而非运行时依赖，CI 显式安装；
           # coverage[toml]：py<3.11 需 tomli 才能读 pyproject.toml 的 coverage 配置
-          pip install -e '.[httpx]' pytest pytest-cov 'coverage[toml]'
+          pip install -e '.[httpx,requests]' pytest pytest-cov 'coverage[toml]'
       - name: Test with coverage gate (line+branch ≥ 98%, vector conformance must pass)
         run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
       - name: Coverage detail (line & branch)
