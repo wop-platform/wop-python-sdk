@@ -2,6 +2,7 @@
 """摘要测试：D2 格式钉（恰一空格/小写 hex/跨族拒绝/长度）、向量字节级、formatRules 全套。"""
 import pytest
 
+import conftest
 from wop_sdk.digest import (
     build_digest_header,
     check_digest_header,
@@ -41,29 +42,31 @@ class TestBuildHeader:
 
 
 class TestFormatRules:
-    """formatRules 全套（spec:A2/F8）：accept = 格式层接受；reject = 拒绝。"""
+    """formatRules 三件套消费（spec:A2/F8）：循环全量 + 未知 id 哨兵 + 条数哨兵。
 
-    @pytest.mark.parametrize("rule_id", ["header-rsa-ok", "header-sm2-ok"])
-    def test_accept_format(self, vectors, rule_id):
-        rule = next(r for r in vectors["formatRules"] if r["id"] == rule_id)
-        check_digest_header(parse_suite(rule["suite"]), rule["value"])
+    本类消费 header-* 子集（check_digest_header 格式层：accept = 格式层接受；
+    reject = 拒绝）；b64url-* 子集由 test_encoding.py 消费（b64url_decode）。
+    """
 
-    @pytest.mark.parametrize(
-        "rule_id",
-        [
-            "header-crossfamily",  # spec:I5 跨族
-            "header-double-space",  # spec:D2 恰一空格
-            "header-uppercase-hex",  # spec:F5 小写
-            "header-wrong-hex-len",  # 必须 64 hex
-            "b64url-with-padding",
-            "b64url-illegal-char",
-        ],
-    )
-    def test_reject(self, vectors, rule_id):
-        rule = next(r for r in vectors["formatRules"] if r["id"] == rule_id)
-        suite = parse_suite(rule.get("suite", "WOP-RSA3072-SHA256"))
-        with pytest.raises((ProtocolFormatError, UnsupportedSuiteError, ValueError)):
-            check_digest_header(suite, rule["value"])
+    def test_sentinels(self, vectors):  # spec:A2 条数哨兵 + 未知 id 哨兵
+        rules = vectors["formatRules"]
+        assert len(rules) == conftest.FORMAT_RULES_COUNT  # 真源向量增删即炸
+        ids = {r["id"] for r in rules}
+        assert ids == conftest.ALL_FORMAT_RULE_IDS  # 新增 id 未显式接入即炸
+
+    def test_header_rules_full_loop(self, vectors):  # spec:A2 全量循环
+        seen = set()
+        for rule in vectors["formatRules"]:  # 循环真源全量，禁止按 id 点名消费
+            if rule["id"] not in conftest.HEADER_RULE_IDS:
+                continue
+            seen.add(rule["id"])
+            suite = parse_suite(rule.get("suite", "WOP-RSA3072-SHA256"))
+            if rule["expect"] == "accept":
+                check_digest_header(suite, rule["value"])  # 正向断言：格式层通过
+            else:
+                with pytest.raises((ProtocolFormatError, UnsupportedSuiteError)):
+                    check_digest_header(suite, rule["value"])
+        assert seen == conftest.HEADER_RULE_IDS  # 子集完备：header-* 一条不漏
 
     def test_crossfamily_is_support_error(self):
         # 跨族标签（I5）单独归为支持类语义（明确拒绝）

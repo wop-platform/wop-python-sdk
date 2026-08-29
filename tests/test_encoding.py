@@ -2,6 +2,7 @@
 """编码层测试：base64url 严格无填充（F7/F6）、小写 hex（F5）、Java URLEncoder 语义（F2）。"""
 import pytest
 
+import conftest
 from wop_sdk.encoding import b64url_decode, b64url_encode, hex_lower, java_urlencode, trimall
 
 
@@ -20,13 +21,6 @@ class TestB64urlStrict:
     def test_encode_uses_url_alphabet(self):
         # 0xFB 0xFF 0xBF → 标准字母表出 "+/+"/，URL 字母表必须是 "-_-_"
         assert b64url_encode(b"\xfb\xff\xbf") == "-_-_"
-    def test_reject_padding_char(self):  # spec:F7 formatRules:b64url-with-padding
-        with pytest.raises(ValueError):
-            b64url_decode("abc=")
-
-    def test_reject_standard_alphabet_plus(self):  # spec:F7 formatRules:b64url-illegal-char
-        with pytest.raises(ValueError):
-            b64url_decode("ab+c")
 
     def test_reject_standard_alphabet_slash(self):
         with pytest.raises(ValueError):
@@ -97,3 +91,35 @@ class TestTrimall:
 
     def test_tabs_newlines_collapse(self):
         assert trimall("a\t\n b") == "a b"
+
+
+class TestFormatRulesB64url:
+    """formatRules b64url 子集三件套消费（spec:A2/F7/D10）：
+    循环全量 + 未知 id 哨兵 + 条数哨兵；语义锚 = Go base64.RawURLEncoding.Strict()
+    （RFC 4648 §3.5 尾随位 canonical）。header-* 子集由 test_digest.py 消费。
+    """
+
+    # accept 向量的正向字节断言（真源 note 标注的解码结果）
+    _ACCEPT_BYTES = {
+        "b64url-trailing-bits-canonical-2": b"\x00",  # AA → 1 字节 0x00
+        "b64url-trailing-bits-canonical-3": b"Ma",  # TWE → 2 字节 0x4D 0x61
+    }
+
+    def test_sentinels(self, vectors):  # spec:A2 条数哨兵 + 未知 id 哨兵
+        rules = vectors["formatRules"]
+        assert len(rules) == conftest.FORMAT_RULES_COUNT  # 真源向量增删即炸
+        ids = {r["id"] for r in rules}
+        assert ids == conftest.ALL_FORMAT_RULE_IDS  # 新增 id 未显式接入即炸
+
+    def test_b64url_rules_full_loop(self, vectors):  # spec:A2 全量循环
+        seen = set()
+        for rule in vectors["formatRules"]:  # 循环真源全量，禁止按 id 点名消费
+            if rule["id"] not in conftest.B64URL_RULE_IDS:
+                continue
+            seen.add(rule["id"])
+            if rule["expect"] == "accept":
+                assert b64url_decode(rule["value"]) == self._ACCEPT_BYTES[rule["id"]]
+            else:
+                with pytest.raises(ValueError):
+                    b64url_decode(rule["value"])
+        assert seen == conftest.B64URL_RULE_IDS  # 子集完备：b64url-* 一条不漏
