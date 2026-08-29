@@ -80,3 +80,9 @@
 - **握手级重试**：公司网关对快速连续 TLS 握手偶发 RST（SSLEOFError，2026-08-25 实测）。握手失败=请求未发出，全方法重试皆安全（非幂等 POST 不重复执行）；forge.call 内建 3 次退避。
 - **空体容错**：云效写操作可返回 200+空 body；`json.load` 裸崩改为按长度守卫返回 `{}`。
 - **权限矩阵实测**（新令牌）：工作项 update/create ✅、工作项评论写 ❌403（缺 scope——链可跑但 triage 拒绝回执降级为仅告警，标签裁决不受影响）、Codeup MR 全套 ✅。
+
+## ADR-GH1 — test_hosting.py CodeQL 行内抑制（2026-08-29，wop-python-sdk 首装）
+
+- **背景**：GitHub org ruleset（main）code_scanning 规则拦 `high_or_higher` 新告警。移植后 CodeQL 对 `tests/test_hosting.py` `TestCodeupEndpointFallback.test_urLError_retries_rdc` 的断言报 py/incomplete-url-substring-sanitization（high）——规则针对「URL 授权用子串包含判断」的反模式；此处是测试断言异常消息包含端点域名，非安全校验，属测试夹具误报（Codeup 时代无 CodeQL，gateway/awesome-rules 未见过此告警）。
+- **决策**：官方行内抑制注解 `# codeql[py/incomplete-url-substring-sanitization]` 原位标注（明确记录「有意抑制」，不改写断言骗过规则）。tests/ 在 DISTRIBUTION.json 属 local 分类（人工对齐面），不破坏 full 零漂移。
+- **反哺**：其余 5 仓移植同样会遇到；根修应经 feedback-upstream 在上游（awesome-rules）落注解后全仓收敛。
