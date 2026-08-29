@@ -11,7 +11,8 @@ jobs:
     # （或仓库级 Secrets，环境引用不影响仓库级回退）
     environment: wop-python-sdk
     permissions:
-      contents: read
+      # write 仅用于创建 GitHub Release 条目；PyPI 发布走 PYPI_TOKEN，不占 token 权限
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,3 +35,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_TOKEN }}
+      - name: Create GitHub Release
+        # 仅在 PyPI 发布成功后执行（前置步骤失败即跳过）——Release 条目 = 已发布信号；
+        # 幂等：已存在（workflow 重跑）则跳过；说明用 --generate-notes 基线，发布后可随时人工编辑
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
+                 --title "wop-python-sdk ${VERSION}" --generate-notes
