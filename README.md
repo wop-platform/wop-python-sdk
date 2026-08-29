@@ -99,11 +99,18 @@ python3 -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
 覆盖：RSA3072/4096 与 SM2 签名字节级断言、OAEP 包装/解包、AES-256-GCM 与 SM4-GCM
 密文字节级断言、SM3/SHA-256 摘要、DEK 载荷组装、digest 头全部格式规则；负向量含
 tamper / 跨族 / 63B、65B 签名 / 带 `=` 的 base64url / C1C2C3 旧国标顺序 /
-MGF1-SHA1 陷阱密文，全部必须拒绝。CI（3.9–3.14 矩阵）执行同一命令。
+MGF1-SHA1 陷阱密文，全部必须拒绝。CI（3.9–3.14 × linux/macOS 矩阵）执行同一命令。
+
+另消费 `wop-specs` 组织级 interop 样本集（`tests/fixtures/interop-cases.json` 字节
+副本，sha256 哨兵钉死）：build 方向按冻结输入复现 draft（RSA byte-exact；SM2 按
+opaque 剥离签名/包装段），verify 方向 23 条冻结样本逐条对账明文与错误分类
+（canonical class 映射表见 `tests/test_interop.py`）。
 
 ## 错误处理与模糊化
 
-- **明确**（公开协议知识，帮助集成自查）：套件格式/跨族、密钥材料、digest 头格式与
-  不匹配、DEK alg 与套件族不符；
+- **明确**（公开协议知识，帮助集成自查）：套件格式/跨族、密钥材料、digest 头格式、
+  缺失与不匹配（D2/I1 结构前置校验）、信封 JSON 形态与各 base64url 段（F7）、
+  DEK alg 与套件族不符；
 - **模糊**（依赖密钥参与，防 oracle，I7）：签名验证失败、解密失败——对外消息不区分
-  tag 失败 / 密钥不符等原因细节。
+  tag 失败 / 密钥不符等原因细节；DEK 载荷（解包后明文）结构畸形除 alg 跨族外一律
+  归入解密失败（interop 合同 n13 / 故障注入手册 P3）。

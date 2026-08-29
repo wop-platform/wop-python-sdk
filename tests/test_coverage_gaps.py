@@ -91,19 +91,20 @@ class TestEnvelopeGaps:
         with pytest.raises(ValueError):
             sm4_gcm_decrypt(b"\x01" * 16, b"\x02" * 12, b"\x00" * 10)
 
-    def test_open_l2_valid_dek_bad_json_blurred(self, rsa_pair):  # 159-164 行
+    def test_open_l2_valid_dek_bad_json_protocol(self, rsa_pair):  # spec:interop-v1 n12
+        # 信封 JSON 形态 = 公开结构知识 → 解析类明确（interop 合同拉齐）
         payload = b"AES-256-GCM$" + b64url_encode(b"\x01" * 32).encode() + b"$" + b64url_encode(b"\x02" * 12).encode()
         wrapped = wrap_dek(RSA3072, rsa_pair[0], payload)
-        with pytest.raises(DecryptError):
+        with pytest.raises(ProtocolFormatError):
             open_l2(RSA3072, rsa_pair[1], b"not-json", b64url_encode(wrapped))
 
-    def test_open_l2_valid_dek_encrypted_not_b64u(self, rsa_pair):
+    def test_open_l2_valid_dek_encrypted_not_b64u(self, rsa_pair):  # spec:interop-v1 n12
         payload = b"AES-256-GCM$" + b64url_encode(b"\x01" * 32).encode() + b"$" + b64url_encode(b"\x02" * 12).encode()
         wrapped = wrap_dek(RSA3072, rsa_pair[0], payload)
         import json as _json
 
         wire = _json.dumps({"encrypted": "ab=cd"}).encode()
-        with pytest.raises(DecryptError):
+        with pytest.raises(ProtocolFormatError):
             open_l2(RSA3072, rsa_pair[1], wire, b64url_encode(wrapped))
 
     def test_unwrap_sm2_internal_error_blurred(self, sm2_pair):

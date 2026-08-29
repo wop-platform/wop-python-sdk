@@ -18,10 +18,13 @@ permissions:
 jobs:
   test:
     # 轴 1：Python 解释器矩阵（3.9 = 声明下界（spec §3 契约）；3.14 = 当前最新稳定），依赖取最新
-    runs-on: ubuntu-latest
+    # 轴 2：OS 矩阵（ubuntu x86_64 + macOS arm64）——cryptography/gmssl 走各平台轮子，
+    # 双 OS 钉住平台相关行为漂移（interop 消费与 OS 矩阵同基线，跨仓拉齐要求）
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
@@ -31,9 +34,9 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          # pytest 属测试工具链而非运行时依赖，CI 显式安装；
+          # pytest/pytest-bdd 属测试工具链而非运行时依赖，CI 显式安装；
           # coverage[toml]：py<3.11 需 tomli 才能读 pyproject.toml 的 coverage 配置
-          pip install -e '.[httpx,requests]' pytest pytest-cov 'coverage[toml]'
+          pip install -e '.[httpx,requests]' pytest pytest-bdd pytest-cov 'coverage[toml]'
       - name: Test with coverage gate (line+branch ≥ 98%, vector conformance must pass)
         run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
       - name: Coverage detail (line & branch)
@@ -55,7 +58,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install cryptography==41.0.0 gmssl==3.2.2 httpx==0.24.0 requests==2.28.0
           pip install -e . --no-deps
-          pip install pytest pytest-cov 'coverage[toml]'
+          pip install pytest pytest-bdd pytest-cov 'coverage[toml]'
       - name: Test with coverage gate at dependency lower bounds
         run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
 

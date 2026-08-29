@@ -138,6 +138,18 @@ class TestKeyEncryptVectors:
         wrapped = wrap_dek(RSA3072, rsa_pair[0], v["plaintext"].encode())
         assert unwrap_dek(RSA3072, rsa_pair[1], wrapped) == v["plaintext"].encode()
 
+    def test_oaep_wrap_deterministic_from_csprng(self, rsa_pair):  # spec:interop-v1 OAEP-from-stream
+        # 同 csprng 流两次包装字节一致（seed 取自注入流，跨仓 build 复现的前提）
+        w1 = wrap_dek(RSA3072, rsa_pair[0], b"payload", csprng=lambda n: b"\x07" * n)
+        w2 = wrap_dek(RSA3072, rsa_pair[0], b"payload", csprng=lambda n: b"\x07" * n)
+        assert w1 == w2
+        assert unwrap_dek(RSA3072, rsa_pair[1], w1) == b"payload"
+
+    def test_oaep_wrap_payload_too_long_rejected(self, rsa_pair):
+        # RSA3072 OAEP 上限 = 384 - 2*32 - 2 = 318 字节
+        with pytest.raises(ValueError):
+            wrap_dek(RSA3072, rsa_pair[0], b"x" * 319)
+
     def test_sm2_encrypt_fixedk_decrypt(self, vectors, sm2_pair):  # spec:A1 sm2-encrypt-fixedk
         v = _vec(vectors, "keyEncrypt", "sm2-encrypt-fixedk")
         out = unwrap_dek(SM2, sm2_pair[1], b64url_decode(v["cipherB64u"]))
@@ -246,17 +258,24 @@ class TestSealOpenL2:
         w2, h2 = seal_l2(RSA3072, rsa_pair[0], b"m", csprng=os.urandom)
         assert h1 != h2 and w1 != w2
 
-    def test_open_bad_wire_json_blurred(self, rsa_pair):
-        with pytest.raises(DecryptError):
-            open_l2(RSA3072, rsa_pair[1], b"not-json", "AAA")
+    def test_open_bad_wire_json_protocol(self, rsa_pair):  # spec:interop-v1 n12 / playbook P2
+        # 信封 JSON 形态 = 公开结构知识 → 解析类明确（interop 合同拉齐，不再归模糊）
+        payload = b"AES-256-GCM$" + b64url_encode(b"\x01" * 32).encode() + b"$" + b64url_encode(b"\x02" * 12).encode()
+        wrapped = wrap_dek(RSA3072, rsa_pair[0], payload)
+        with pytest.raises(ProtocolFormatError):
+            open_l2(RSA3072, rsa_pair[1], b"not-json", b64url_encode(wrapped))
 
-    def test_open_missing_encrypted_blurred(self, rsa_pair):
-        with pytest.raises(DecryptError):
-            open_l2(RSA3072, rsa_pair[1], b'{"other":1}', "AAA")
+    def test_open_missing_encrypted_protocol(self, rsa_pair):  # spec:interop-v1 n12
+        payload = b"AES-256-GCM$" + b64url_encode(b"\x01" * 32).encode() + b"$" + b64url_encode(b"\x02" * 12).encode()
+        wrapped = wrap_dek(RSA3072, rsa_pair[0], payload)
+        wire = json.dumps({"other": 1}).encode()
+        with pytest.raises(ProtocolFormatError):
+            open_l2(RSA3072, rsa_pair[1], wire, b64url_encode(wrapped))
 
     def test_open_dek_b64u_padding_rejected(self, rsa_pair):
+        # dek 值 b64url = 公开结构（F7）→ 解析类明确（对齐 Go DecodeB64URL→CodeProtocol）
         wire, _ = seal_l2(RSA3072, rsa_pair[0], b"m", csprng=lambda n: b"\xab" * n)
-        with pytest.raises(DecryptError):
+        with pytest.raises(ProtocolFormatError):
             open_l2(RSA3072, rsa_pair[1], wire, "abc=")  # F7 严格无填充
 
     def test_open_dek_payload_invalid_utf8_blurred(self, rsa_pair):

@@ -36,9 +36,9 @@ httpx = ["httpx>=0.24"]
 requests = ["requests>=2.28"]
 
 [dependency-groups]
-# 发布构建前端（PEP 735，不进发布元数据）：
+# 发布构建前端 + BDD 测试工具链（PEP 735，不进发布元数据）：
 # pip install --group dev && python -m build
-dev = ["build"]
+dev = ["build", "pytest-bdd>=8.0,<9.0"]
 
 [project.urls]
 Homepage = "https://github.com/wop-platform/wop-python-sdk"

@@ -2,8 +2,8 @@
 """WopClient：协议核心编排（spec §2 概念 API 的 Python 映射）。
 
 - build_request：组装协议头 + 签名 + 可选 L2 信封 → RequestDraft（零网络 IO）；
-- verify_response / verify_callback：F6 固定顺序（验签 → digest 复核 → DEK 解包 →
-  alg 族比对 → bulk 解密），失败统一 VerifyResult(ok=False, reason)，
+- verify_response / verify_callback：F6 固定顺序（结构前置校验 → 验签 → digest 复核 →
+  DEK 解包 → alg 族比对 → bulk 解密），失败统一 VerifyResult(ok=False, reason, error)，
   验签/解密类 reason 模糊（I7），格式/完整性/一致性类 reason 明确（10.2）。
 """
 import json
@@ -71,11 +71,16 @@ class RequestDraft:
 
 @dataclass
 class VerifyResult:
-    """响应/回调校验结果；reason 对验签/解密类模糊（I7）。"""
+    """响应/回调校验结果；reason 对验签/解密类模糊（I7）。
+
+    error 携带原始分类异常（WopSdkError 子类，仅失败时非 None），
+    供消费方按 10.2 错误分类编程处理（对齐 Go VerifyResult.Code）。
+    """
 
     ok: bool
     plaintext: Optional[bytes] = None
     reason: Optional[str] = None
+    error: Optional[WopSdkError] = None
 
 
 class WopClient:
@@ -117,11 +122,21 @@ class WopClient:
         query_string: str = "",
         expired_seconds: int = 1800,
         extra_headers: Optional[Dict[str, str]] = None,
+        timestamp_ms: Optional[int] = None,
+        nonce: Optional[str] = None,
     ) -> RequestDraft:
-        """构造请求（F9）：协议头组装 → L2 可选封装 → canonicalRequest → 签名。"""
+        """构造请求（F9）：协议头组装 → L2 可选封装 → canonicalRequest → 签名。
+
+        timestamp_ms / nonce 为确定性钩子（重放/联调用；镜像 Go WithTimestamp/
+        WithNonce）。随机流消费顺序合同（wop-specs/interop/v1）：
+        [16B nonce 池][CEK][12B IV][k…]——nonce 注入时跳过 nonce 池段。
+        """
         if level not in _LEVELS:
             raise ValueError("level 必须为 L0 或 L2，实际 %r" % level)
         safe_method = method.strip().upper()
+        # spec:interop-v1 随机流消费顺序：nonce 池最前，先于 seal_l2 的 CEK/IV
+        if not nonce:
+            nonce = self._csprng(16).hex()  # F9：CSPRNG nonce
         wire: Optional[bytes] = None
         encrypt_header: Optional[str] = None
         if level == "L2":
@@ -133,8 +148,8 @@ class WopClient:
 
         headers: Dict[str, str] = {
             "x-wop-appkey": self._config.app_key,
-            "x-wop-timestamp": str(_now_ms()),
-            "x-wop-nonce": self._csprng(16).hex(),  # F9：CSPRNG nonce
+            "x-wop-timestamp": str(_now_ms() if timestamp_ms is None else int(timestamp_ms)),
+            "x-wop-nonce": nonce,
         }
         if wire is not None:
             # D2：有 body 必产 digest；I1：digest 必入 signedHeaders（下方签名集合即全部头）
@@ -195,7 +210,7 @@ class WopClient:
             return self._verify_flow(lower, body, path, method.upper(), query_string or "")
         except (SignatureVerifyError, DecryptError, ProtocolFormatError, DigestMismatchError,
                 DekConsistencyError, UnsupportedSuiteError, SuiteParseError) as exc:
-            return VerifyResult(ok=False, reason=str(exc))
+            return VerifyResult(ok=False, reason=str(exc), error=exc)
 
     def verify_callback(
         self, headers: Dict[str, str], body: bytes, callback_path: str
@@ -225,6 +240,16 @@ class WopClient:
             raise UnsupportedSuiteError(
                 "响应声明套件 %s 与商户配置 %s 不符" % (suite_part, self._suite.security_req)
             )
+        # F6 ①前置结构校验（公开协议知识，明确拒绝，先于验签；spec:interop-v1 n09/n10/n15）：
+        # D2 有 body 必传 digest；I1 digest 必入 signedHeaders；无 body 不得携带 digest。
+        digest_header = lower.get("x-wop-content-digest")
+        if body:
+            if digest_header is None:
+                raise DigestMismatchError("有响应体但缺少 x-wop-content-digest")
+            if "x-wop-content-digest" not in signed_names.split(";"):
+                raise ProtocolFormatError("x-wop-content-digest 未列入 signedHeaders（I1）")
+        elif digest_header is not None:
+            raise ProtocolFormatError("无响应体不应携带 x-wop-content-digest")
         sig = _strict_decode_signature(sig_b64u)
         auth = "%s/%s" % (version, _expired)
         signed: Dict[str, str] = {}
@@ -233,15 +258,15 @@ class WopClient:
                 raise ProtocolFormatError("签名声明的头在响应中缺席：%s" % name)
             signed[name] = lower[name]
         canonical = build_canonical(auth, method, path, query_string, canonical_headers(signed))
-        # F6 ①先验签（I2：先验签后解密）
+        # F6 ②先验签（I2：先验签后解密）
         verify(req_suite, self._wrap_pub, canonical.encode("utf-8"), sig)
-        # F6 ②digest 复核（D2：有 body 必传；对象 = wire 原始字节）
+        # F6 ③digest 复核（D2：有 body 必传；对象 = wire 原始字节）
         if body:
             verify_digest_header(self._suite, lower.get("x-wop-content-digest"), body)
         enc = lower.get("x-wop-encrypt")
         if enc is None:
             return VerifyResult(ok=True, plaintext=body)  # L0
-        # F6 ③④⑤ DEK 解包 → alg 族比对 → bulk 解密（envelope.open_l2 内序）
+        # F6 ④⑤⑥ DEK 解包 → alg 族比对 → bulk 解密（envelope.open_l2 内序）
         if not enc.startswith(_DEK_PREFIX):
             raise ProtocolFormatError("x-wop-encrypt 头格式错误：应为 %s<base64url>" % _DEK_PREFIX)
         plaintext = open_l2(self._suite, self._signer, body, enc[len(_DEK_PREFIX):])

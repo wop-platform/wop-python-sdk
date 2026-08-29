@@ -18,12 +18,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Verify tag matches pyproject version
+        # 版本单一源纪律：tag vX.Y.Z 必须与 pyproject [project].version 严格一致，
+        # 不一致即刻 fail（防止 tag 与发布产物版本漂移）
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PROJ_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "$TAG_VERSION" != "$PROJ_VERSION" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME}（${TAG_VERSION}）与 pyproject.toml version（${PROJ_VERSION}）不一致"
+            exit 1
+          fi
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          # 与 ci.yml 保持一致：pytest 属测试工具链而非运行时依赖，CI 显式安装；
+          # 与 ci.yml 保持一致：pytest/pytest-bdd 属测试工具链而非运行时依赖，CI 显式安装；
           # coverage[toml]：py<3.11 需 tomli 才能读 pyproject.toml 的 coverage 配置
-          pip install -e '.[httpx]' pytest pytest-cov 'coverage[toml]'
+          pip install -e '.[httpx]' pytest pytest-bdd pytest-cov 'coverage[toml]'
       - name: Test with coverage gate (line+branch ≥ 98%, must pass before publish)
         run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
       - name: Build sdist and wheel
