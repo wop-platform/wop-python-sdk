@@ -31,17 +31,22 @@ command -v gh >/dev/null || die "需要 gh CLI"
 [ -z "$(git status --porcelain)" ] || die "工作区不干净"
 ORIG_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
-wait_run() {  # 等待分支最新 dispatch run 结束，输出 conclusion
-  # 注意：gh run watch 在非交互终端 + pending 态会提前退出，不可依赖——
-  # 直接轮询 conclusion 直到非空（queued/in_progress 均为空）
-  local run_id="" conclusion=""
+latest_run_id() {  # 分支最新 dispatch run id（空=无）
+  gh run list -R "$REPO" --branch "$BRANCH" --event workflow_dispatch \
+    --limit 1 --json databaseId --jq '.[0].databaseId // ""' 2>/dev/null || true
+}
+
+wait_run() {  # $1=dispatch 前快照 id；等待「新出现的」run 结束，输出 conclusion
+  # 两个坑：① gh run watch 非交互终端 pending 态提前退出，不可依赖；
+  # ② 绿 dispatch 后新 run 注册前，run list --limit 1 仍是刚结束的红 run
+  #   ——必须排除旧 id，否则立即取到旧 conclusion 误判
+  local prev_id="$1" run_id="" conclusion=""
   for _ in $(seq 1 30); do
-    run_id="$(gh run list -R "$REPO" --branch "$BRANCH" --event workflow_dispatch \
-      --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)"
-    [ -n "$run_id" ] && break
+    run_id="$(latest_run_id)"
+    [ -n "$run_id" ] && [ "$run_id" != "$prev_id" ] && break
     sleep 2
   done
-  [ -n "$run_id" ] || die "未发现 dispatch run"
+  [ -n "$run_id" ] && [ "$run_id" != "$prev_id" ] || die "未发现新 dispatch run（prev=$prev_id）"
   for _ in $(seq 1 90); do
     conclusion="$(gh run view "$run_id" -R "$REPO" --json conclusion \
       --jq '.conclusion // ""' 2>/dev/null || true)"
@@ -65,8 +70,9 @@ git add "$TEST_FILE" && git commit -q -m "drill: 注入必败测试（演练自�
 git push -q "$GIT_REMOTE" "$BRANCH" --set-upstream
 
 log "2/6 dispatch 红 run"
+PREV_ID="$(latest_run_id)"
 gh workflow run ci.yml -R "$REPO" --ref "$BRANCH"
-[ "$(wait_run)" = "failure" ] || die "红 run 预期 failure"
+[ "$(wait_run "$PREV_ID")" = "failure" ] || die "红 run 预期 failure"
 
 log "3/6 断言自动开单"
 sleep 5
@@ -85,8 +91,9 @@ PY
 git add "$TEST_FILE" && git commit -q -m "drill: 移除必败测试（演练自动关单）"
 git push -q "$GIT_REMOTE" "$BRANCH"
 
+PREV_ID="$(latest_run_id)"
 gh workflow run ci.yml -R "$REPO" --ref "$BRANCH"
-[ "$(wait_run)" = "success" ] || die "绿 run 预期 success"
+[ "$(wait_run "$PREV_ID")" = "success" ] || die "绿 run 预期 success"
 
 log "5/6 断言自动关单（issue #${ISSUE}）"
 sleep 5
