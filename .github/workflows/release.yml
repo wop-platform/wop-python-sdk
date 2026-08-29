@@ -1,0 +1,36 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # 环境值按包名（wop-sdk）：PYPI_TOKEN 配置于该 GitHub Environment
+    # （或仓库级 Secrets，环境引用不影响仓库级回退）
+    environment: wop-sdk
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # 与 ci.yml 保持一致：pytest 属测试工具链而非运行时依赖，CI 显式安装；
+          # coverage[toml]：py<3.11 需 tomli 才能读 pyproject.toml 的 coverage 配置
+          pip install -e '.[httpx]' pytest pytest-cov 'coverage[toml]'
+      - name: Test with coverage gate (line+branch ≥ 98%, must pass before publish)
+        run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
+      - name: Build sdist and wheel
+        run: |
+          pip install build
+          python -m build
+      - name: Publish to PyPI
+        # 发布步骤位于测试全绿之后，失败不留半发布状态
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
