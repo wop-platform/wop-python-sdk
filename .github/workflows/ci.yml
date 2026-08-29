@@ -18,10 +18,13 @@ permissions:
 jobs:
   test:
     # 轴 1：Python 解释器矩阵（3.9 = 声明下界（spec §3 契约）；3.14 = 当前最新稳定），依赖取最新
-    runs-on: ubuntu-latest
+    # 轴 2：OS 矩阵（ubuntu x86_64 + macOS arm64）——cryptography/gmssl 走各平台轮子，
+    # 双 OS 钉住平台相关行为漂移（interop 消费与 OS 矩阵同基线，跨仓拉齐要求）
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
