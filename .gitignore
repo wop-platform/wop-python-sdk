@@ -10,3 +10,15 @@ htmlcov/
 .pytest_cache/
 .venv/
 venv/
+
+# 工厂运行时产物与机器态（不入库；模式参照 gtsp-wop-gateway .gitignore）
+.factory/artifacts/
+.factory/locks/
+.factory/worktrees/
+.factory/metrics/
+.factory/var/
+.factory/.pytest_cache/
+.factory/regression/**/out/
+.factory/prompts/__pycache__/
+.factory/feedback-log.jsonl
+.factory/upstream-lock.json
