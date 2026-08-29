@@ -11,7 +11,8 @@
 # 用法：scripts/ci-notify-drill.sh  （需 gh 已登录、工作区干净、可 push）
 set -euo pipefail
 
-REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"   # gh 命令用 owner/repo
+GIT_REMOTE="${GIT_REMOTE:-origin}"                                 # git 命令用 remote 名
 BRANCH="drill/ci-notify-$(date +%s)"
 SEARCH="CI 失败跟踪 in:title"
 TEST_FILE="tests/test_suites.py"
@@ -21,7 +22,7 @@ log() { printf '\033[1;34m[drill]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[drill] FAIL:\033[0m %s\n' "$*" >&2; exit 1; }
 cleanup() {
   git checkout -q "${ORIG_BRANCH:-main}" 2>/dev/null || true
-  git push -q "$REPO" --delete "$BRANCH" 2>/dev/null || true
+  git push -q "$GIT_REMOTE" --delete "$BRANCH" 2>/dev/null || true
   git branch -q -D "$BRANCH" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -54,7 +55,7 @@ log "1/6 建演练分支并注入必败测试：$BRANCH"
 git checkout -q -b "$BRANCH"
 printf '%s' "$INJECT" >> "$TEST_FILE"
 git add "$TEST_FILE" && git commit -q -m "drill: 注入必败测试（演练自动开单）"
-git push -q "$REPO" "$BRANCH" --set-upstream
+git push -q "$GIT_REMOTE" "$BRANCH" --set-upstream
 
 log "2/6 dispatch 红 run"
 gh workflow run ci.yml -R "$REPO" --ref "$BRANCH"
@@ -75,7 +76,7 @@ assert bad in s, "注入的必败测试不存在"
 open(p, 'w').write(s.replace(bad, ''))
 PY
 git add "$TEST_FILE" && git commit -q -m "drill: 移除必败测试（演练自动关单）"
-git push -q "$REPO" "$BRANCH"
+git push -q "$GIT_REMOTE" "$BRANCH"
 
 gh workflow run ci.yml -R "$REPO" --ref "$BRANCH"
 [ "$(wait_run)" = "success" ] || die "绿 run 预期 success"
