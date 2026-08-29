@@ -52,3 +52,50 @@ jobs:
           pip install pytest pytest-cov coverage
       - name: Test with coverage gate at dependency lower bounds
         run: python -m pytest --cov=wop_sdk --cov-branch --cov-fail-under=98
+
+  notify-failure:
+    # 失败自动开单：不依赖个人通知设置的持久失败痕迹（单一跟踪 issue，幂等追加）
+    needs: [test, oldest-deps]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read   # gh run view 取失败 job 名单
+      issues: write
+    steps:
+      - name: Create or update tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          TITLE="CI 失败跟踪（自动开单）"
+          FAILED=$(gh run view "$RUN_ID" --json jobs \
+            --jq '.jobs[] | select(.conclusion=="failure") | .name' | sed 's/^/  - /')
+          BODY=$(printf '## CI 失败\n- 触发：%s\n- commit：[%s](https://github.com/%s/commit/%s)\n- run：%s\n- 失败 job：\n%s\n\n此 issue 由 CI 自动创建/追加；工作流恢复绿后将自动关闭。' \
+            "$EVENT" "$SHA" "$GITHUB_REPOSITORY" "$SHA" "$RUN_URL" "$FAILED")
+          NUMBER=$(gh issue list --state open --search "CI 失败跟踪 in:title" --json number --jq '.[0].number')
+          if [ -n "$NUMBER" ]; then
+            gh issue comment "$NUMBER" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
+
+  notify-recovery:
+    # 恢复自动关单：闭环（失败开 → 绿后关）
+    needs: [test, oldest-deps]
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Close tracking issue if any
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          NUMBER=$(gh issue list --state open --search "CI 失败跟踪 in:title" --json number --jq '.[0].number')
+          if [ -n "$NUMBER" ]; then
+            gh issue close "$NUMBER" --comment "CI 已恢复绿：$RUN_URL"
+          fi
