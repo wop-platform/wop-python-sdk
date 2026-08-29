@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wop-python-sdk"
-version = "0.1.1"
+version = "0.1.6"
 description = "WOP 商户侧官方 Python SDK：协议核心（签名/摘要/数字信封/验签解密）+ 可插拔 HTTP 适配层"
 readme = "README.md"
 license = { text = "MIT" }
