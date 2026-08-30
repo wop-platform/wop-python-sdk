@@ -1,4 +1,5 @@
 # WOP Python SDK
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-python-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-python-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 WOP 网关商户侧官方 Python 客户端库：封装协议核心（套件解析 / 结构化签名 / 内容摘要 /
 L2 数字信封 / 验签解密）与可插拔 HTTP 适配层，使商户无需理解 canonicalRequest、
