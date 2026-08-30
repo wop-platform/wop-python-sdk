@@ -118,23 +118,21 @@ class HexStream:
     def __call__(self, n: int) -> bytes:
         chunk = self._raw[self._pos:self._pos + n]
         self._pos += len(chunk)
-        if len(chunk) < n:
-            return chunk + b"\x5a" * (n - len(chunk))
-        return chunk
+        return chunk + b"\x5a" * (n - len(chunk)) if len(chunk) < n else chunk
 
 
 def _wire_bytes(b64u: str) -> bytes:
     """wireBodyB64 → bytes；空串（n15 无 body）映射为 b""。"""
-    return b"" if not b64u else b64url_decode(b64u)
+    return b64url_decode(b64u) if b64u else b""
 
 
 def _interop_client(vec_keys, suite: str, csprng=None) -> WopClient:
     """按套件从黄金向量取密钥构造客户端（与 crypto-vectors.json 同源，镜像 Go interopClient）。"""
-    if suite == "WOP-SM2-SM3":
-        merchant, platform = vec_keys["sm2"]["privateDB64"], vec_keys["sm2"]["publicPointB64"]
-    elif suite == "WOP-RSA4096-SHA256":
+    if suite == "WOP-RSA4096-SHA256":
         merchant = vec_keys["rsa4096"]["privatePkcs8B64"]
         platform = vec_keys["rsa4096"]["publicSpkiB64"]
+    elif suite == "WOP-SM2-SM3":
+        merchant, platform = vec_keys["sm2"]["privateDB64"], vec_keys["sm2"]["publicPointB64"]
     else:
         merchant = vec_keys["rsa3072"]["privatePkcs8B64"]
         platform = vec_keys["rsa3072"]["publicSpkiB64"]
@@ -212,11 +210,11 @@ class TestInteropConformanceBuild:  # spec:interop-v1 消费要求 2
         opaque = set(expected.get("opaque") or [])
         for name, want in expected["headers"].items():
             got = draft.headers.get(name)
-            if name + ".signatureSegment" in opaque:
+            if f"{name}.signatureSegment" in opaque:
                 got, want = _strip_signature_segment(got), _strip_signature_segment(want)
-            if name + ".dekValue" in opaque:
+            if f"{name}.dekValue" in opaque:
                 got, want = _strip_dek_value(got), _strip_dek_value(want)
-            assert got == want, "头 %s 不一致" % name
+            assert got == want, f"头 {name} 不一致"
         # 头集合哨兵：协议头（x-wop-*）恰为 fixture 声明集合；
         # 签名集外仅允许本仓出向便利头 content-type（不参与签名，不影响协议编排）
         assert {k for k in draft.headers if k.startswith("x-wop-")} == set(expected["headers"])
@@ -251,15 +249,17 @@ class TestInteropConformanceVerify:  # spec:interop-v1 消费要求 3
             resp["headers"], body, path, method=resp["method"]
         )
         if case["kind"] == "verify-positive":
-            assert result.ok, "%s 应通过：%s" % (case_id, result.reason)
-            assert result.plaintext == b64url_decode(case["expect"]["plaintextB64"]), \
-                "%s 明文不一致" % case_id
+            assert result.ok, f"{case_id} 应通过：{result.reason}"
+            assert result.plaintext == b64url_decode(
+                case["expect"]["plaintextB64"]
+            ), f"{case_id} 明文不一致"
         else:
-            assert not result.ok, "%s 应拒绝" % case_id
+            assert not result.ok, f"{case_id} 应拒绝"
             got = class_of(result)
             want = case["expect"]["errorClass"]
-            assert got == want, "%s 错误分类 = %s(%s), want %s" % (
-                case_id, got, type(result.error).__name__, want)
+            assert (
+                got == want
+            ), f"{case_id} 错误分类 = {got}({type(result.error).__name__}), want {want}"
 
 
 def test_canonical_mapping_table_declares_all_verify_error_types():
@@ -270,4 +270,6 @@ def test_canonical_mapping_table_declares_all_verify_error_types():
 
     source = inspect.getsource(client_mod.WopClient.verify_response)
     for exc_type in CANONICAL_ERROR_CLASS:
-        assert exc_type.__name__ in source, "映射表类型 %s 未见于 verify_response 捕获集" % exc_type.__name__
+        assert (
+            exc_type.__name__ in source
+        ), f"映射表类型 {exc_type.__name__} 未见于 verify_response 捕获集"

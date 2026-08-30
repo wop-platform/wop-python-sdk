@@ -165,21 +165,18 @@ class WopClient:
             else:
                 app_headers[low] = str(value).strip()
 
-        auth = "v1/%d" % int(expired_seconds)
+        auth = "v1/%d" % expired_seconds
         canonical = build_canonical(
             auth, safe_method, path, query_string or "", canonical_headers(headers)
         )
         sig = sign(self._suite, self._signer, canonical.encode("utf-8"), csprng=self._csprng)
-        headers["x-wop-sign"] = "%s %s/%s/%s" % (
-            self._suite.security_req,
-            auth,
-            ";".join(sorted(k for k in headers)),
-            b64url_encode(sig),
+        headers["x-wop-sign"] = (
+            f'{self._suite.security_req} {auth}/{";".join(sorted(iter(headers)))}/{b64url_encode(sig)}'
         )
         out: Dict[str, str] = dict(headers)
         if wire is not None:
             out.setdefault("content-type", "application/json")
-        out.update(app_headers)
+        out |= app_headers
         return RequestDraft(safe_method, path, out, wire, level)
 
     @staticmethod
@@ -238,7 +235,7 @@ class WopClient:
         req_suite = parse_suite(suite_part)  # 解析类/支持类错误明确
         if req_suite.security_req != self._suite.security_req:
             raise UnsupportedSuiteError(
-                "响应声明套件 %s 与商户配置 %s 不符" % (suite_part, self._suite.security_req)
+                f"响应声明套件 {suite_part} 与商户配置 {self._suite.security_req} 不符"
             )
         # F6 ①前置结构校验（公开协议知识，明确拒绝，先于验签；spec:interop-v1 n09/n10/n15）：
         # D2 有 body 必传 digest；I1 digest 必入 signedHeaders；无 body 不得携带 digest。
@@ -251,11 +248,11 @@ class WopClient:
         elif digest_header is not None:
             raise ProtocolFormatError("无响应体不应携带 x-wop-content-digest")
         sig = _strict_decode_signature(sig_b64u)
-        auth = "%s/%s" % (version, _expired)
+        auth = f"{version}/{_expired}"
         signed: Dict[str, str] = {}
         for name in signed_names.split(";"):
             if name not in lower:
-                raise ProtocolFormatError("签名声明的头在响应中缺席：%s" % name)
+                raise ProtocolFormatError(f"签名声明的头在响应中缺席：{name}")
             signed[name] = lower[name]
         canonical = build_canonical(auth, method, path, query_string, canonical_headers(signed))
         # F6 ②先验签（I2：先验签后解密）
@@ -268,7 +265,7 @@ class WopClient:
             return VerifyResult(ok=True, plaintext=body)  # L0
         # F6 ④⑤⑥ DEK 解包 → alg 族比对 → bulk 解密（envelope.open_l2 内序）
         if not enc.startswith(_DEK_PREFIX):
-            raise ProtocolFormatError("x-wop-encrypt 头格式错误：应为 %s<base64url>" % _DEK_PREFIX)
+            raise ProtocolFormatError(f"x-wop-encrypt 头格式错误：应为 {_DEK_PREFIX}<base64url>")
         plaintext = open_l2(self._suite, self._signer, body, enc[len(_DEK_PREFIX):])
         return VerifyResult(ok=True, plaintext=plaintext)
 
@@ -280,4 +277,4 @@ def _strict_decode_signature(sig_b64u: str) -> bytes:
     try:
         return b64url_decode(sig_b64u)
     except ValueError as exc:
-        raise ProtocolFormatError("签名编码非法：%s" % exc) from exc
+        raise ProtocolFormatError(f"签名编码非法：{exc}") from exc

@@ -231,7 +231,7 @@ class TestDekPayload:
             parse_dek_payload(RSA3072, payload)
 
     def test_key_length_mismatch_rejected(self):
-        payload = "AES-256-GCM$" + b64url_encode(b"\x01" * 16) + "$" + b64url_encode(b"\x02" * 12)
+        payload = f'AES-256-GCM${b64url_encode(b"\x01" * 16)}${b64url_encode(b"\x02" * 12)}'
         with pytest.raises(ProtocolFormatError):
             parse_dek_payload(RSA3072, payload)
 

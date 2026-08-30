@@ -110,8 +110,7 @@ class ByteOffsetMap:
     def __init__(self, text):
         self.lines = text.splitlines(keepends=True)
         starts = [0]
-        for line in self.lines:
-            starts.append(starts[-1] + len(line.encode("utf-8")))
+        starts.extend(starts[-1] + len(line.encode("utf-8")) for line in self.lines)
         self.byte_starts = starts
 
     def off(self, row, col):
@@ -122,20 +121,21 @@ def _docstring_spans(tree, bmap):
     """AST 定位 module/class/function 的 docstring 字节偏移区间。"""
     spans = []
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            if node.body and isinstance(node.body[0], ast.Expr) and \
-                    isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str):
-                c = node.body[0].value
-                spans.append((bmap.off(c.lineno, c.col_offset), bmap.off(c.end_lineno, c.end_col_offset)))
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and (node.body and isinstance(node.body[0], ast.Expr) and \
+                            isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str)):
+            c = node.body[0].value
+            spans.append((bmap.off(c.lineno, c.col_offset), bmap.off(c.end_lineno, c.end_col_offset)))
     return spans
 
 
 def _pragma_lines(lines):
-    bad = set()
-    for i, line in enumerate(lines, 1):
-        if "pragma: no cover" in line or "# pragma" in line and "no cover" in line:
-            bad.add(i)
-    return bad
+    return {
+        i
+        for i, line in enumerate(lines, 1)
+        if "pragma: no cover" in line
+        or "# pragma" in line
+        and "no cover" in line
+    }
 
 
 def gen_mutants_for_file(path):
@@ -257,7 +257,7 @@ def gen_mutants_for_file(path):
             # 字符串常量：s → s + "!"（前缀与引号保留，闭合引号前插入）
             if s.endswith(('"""', "'''")) or "\n" in s:
                 continue
-            add(tok, s[:-1] + '!"' if s.endswith('"') else s[:-1] + "!'", OP_STR)
+            add(tok, f'{s[:-1]}!"' if s.endswith('"') else f"{s[:-1]}!'", OP_STR)
     return mutants
 
 
@@ -265,9 +265,11 @@ def collect_target_files():
     files = []
     for dirpath, dirnames, filenames in os.walk(SRC):
         dirnames[:] = [d for d in dirnames if d != "__pycache__"]
-        for fn in sorted(filenames):
-            if fn.endswith(".py") and fn not in EXEMPT_FILES:
-                files.append(os.path.join(dirpath, fn))
+        files.extend(
+            os.path.join(dirpath, fn)
+            for fn in sorted(filenames)
+            if fn.endswith(".py") and fn not in EXEMPT_FILES
+        )
     return sorted(files)
 
 
@@ -307,34 +309,40 @@ def git_src_dirty():
     return r.stdout.strip()
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--list", action="store_true", help="只列变异点统计")
-    ap.add_argument("--max", type=int, default=0, help="最多执行 N 个变异体（冒烟）")
-    ap.add_argument("--only-op", default="", help="逗号分隔算子过滤")
-    args = ap.parse_args()
-
+def _assert_src_clean():
+    """安全门：src/ 工作区非净 → 拒绝启动（变异注入的前提是可原字节还原）。"""
     if git_src_dirty():
-        sys.exit("[mutation] src/ 工作区非净，拒绝启动：%s" % git_src_dirty())
+        sys.exit(f"[mutation] src/ 工作区非净，拒绝启动：{git_src_dirty()}")
 
-    files = collect_target_files()
+
+def _gen_all_mutants(files):
+    """生成全部目标文件的变异点（未过滤覆盖）。"""
     all_mutants = []
     for f in files:
         all_mutants.extend(gen_mutants_for_file(f))
+    return all_mutants
 
+
+def _print_mutation_stats(all_mutants):
+    """打印按算子的变异点统计（--list 的主体输出）。"""
     by_op = collections.Counter(m["op"] for m in all_mutants)
     by_file = collections.Counter(m["file"] for m in all_mutants)
     print("[mutation] 变异点（未过滤覆盖）：")
     for op in ALL_OPS:
         print("  %-14s %d" % (op, by_op.get(op, 0)))
     print("  合计 %d，文件 %d 个" % (len(all_mutants), len(by_file)))
-    if args.list:
-        return
 
-    if args.only_op:
-        allow = {x.strip() for x in args.only_op.split(",") if x.strip()}
-        all_mutants = [m for m in all_mutants if m["op"] in allow]
 
+def _filter_by_op(all_mutants, only_op):
+    """--only-op 逗号分隔算子过滤（空 → 原样返回）。"""
+    if not only_op:
+        return all_mutants
+    allow = {x.strip() for x in only_op.split(",") if x.strip()}
+    return [m for m in all_mutants if m["op"] in allow]
+
+
+def _select_covered_mutants(all_mutants):
+    """跑基线覆盖率（test 上下文）：筛掉无测试触及的行，其余绑定各自要跑的测试集。"""
     line_tests, covered = run_coverage_contexts()
     excluded = []
     mutants = []
@@ -343,20 +351,24 @@ def main():
         if m["row"] not in covered.get(rel, set()):
             excluded.append(m)
         else:
-            tests = sorted(line_tests.get((rel, m["row"]), ()))
-            if not tests:  # 空上下文行（导入期/模块常量）→ 模块归属回退；再缺则全量兜底
-                tests = list(FALLBACK_TESTS.get(os.path.basename(rel), []))
+            tests = sorted(line_tests.get((rel, m["row"]), ())) or list(FALLBACK_TESTS.get(os.path.basename(rel), []))
             m["tests"] = tests
             mutants.append(m)
     print("[mutation] 覆盖过滤：有效 %d，排除（无测试触及该行）%d" % (len(mutants), len(excluded)))
-    if args.max:
-        mutants = mutants[: args.max]
+    return mutants, excluded
 
+
+def _snapshot_originals(files):
+    """原字节内存备份（还原唯一依据，绝不依赖 git 还原）。"""
     originals = {}
     for f in files:
         with open(f, "rb") as fh:
             originals[f] = fh.read()
+    return originals
 
+
+def _run_mutants(mutants, originals):
+    """逐变异体：注入 → 只跑覆盖该行的测试 → 原字节还原校验；结束 finally 全量还原。"""
     results = []
     t0 = time.time()
     try:
@@ -383,14 +395,14 @@ def main():
                 with open(target, "wb") as fh:
                     fh.write(originals[target])
                 with open(target, "rb") as fh:
-                    assert fh.read() == originals[target], "还原失败 %s" % target
+                    assert fh.read() == originals[target], f"还原失败 {target}"
             m2 = dict(m)
             m2["status"] = status
             m2.pop("tests", None)
             m2["n_tests"] = len(tests)
             results.append(m2)
             if idx % 25 == 0 or idx == len(mutants):
-                killed = sum(1 for x in results if x["status"] == "KILLED")
+                killed = sum(x["status"] == "KILLED" for x in results)
                 print("  [%d/%d] 击杀 %d（%.1f%%）elapsed %.0fs" % (
                     idx, len(mutants), killed, 100.0 * killed / idx, time.time() - t0), flush=True)
     finally:
@@ -398,32 +410,36 @@ def main():
             with open(f, "wb") as fh:
                 fh.write(data)
         dirty = git_src_dirty()
-        print("[mutation] 还原完成；src/ %s" % ("干净" if not dirty else "仍脏！！%s" % dirty))
+        print(f'[mutation] 还原完成；src/ {f"仍脏！！{dirty}" if dirty else "干净"}')
         if dirty:
             sys.exit(1)
+    return results
 
-    killed = [x for x in results if x["status"] == "KILLED"]
-    survived = [x for x in results if x["status"] == "SURVIVED"]
-    kill_rate = 100.0 * len(killed) / len(results) if results else 0.0
-    op_stat = collections.defaultdict(lambda: [0, 0])  # op -> [killed, total]
-    for x in results:
-        op_stat[x["op"]][1] += 1
-        if x["status"] == "KILLED":
-            op_stat[x["op"]][0] += 1
 
+def _write_results_json(results, excluded, killed, survived, kill_rate):
+    """写 docs/mutation-results.json（机器可读结果）。"""
     os.makedirs(os.path.join(ROOT, "docs"), exist_ok=True)
     with open(os.path.join(ROOT, "docs", "mutation-results.json"), "w", encoding="utf-8") as f:
         json.dump({"kill_rate": kill_rate, "killed": len(killed), "survived": len(survived),
                    "total": len(results), "excluded_no_coverage": len(excluded),
                    "results": results}, f, ensure_ascii=False, indent=1)
 
+
+def _write_report_md(results, excluded, killed, survived, kill_rate):
+    """写 docs/mutation-report.md（按算子击杀率 + 存活变异体清单）。"""
+    op_stat = collections.defaultdict(lambda: [0, 0])  # op -> [killed, total]
+    for x in results:
+        op_stat[x["op"]][1] += 1
+        if x["status"] == "KILLED":
+            op_stat[x["op"]][0] += 1
+
     lines = [
         "# 变异测试报告（wop-python-sdk）",
         "",
         "- 工具：`scripts/mutation_test.py`（自研 token 级变异器，PIT 不适用 Python）",
-        "- 生成：%s" % time.strftime("%Y-%m-%d %H:%M:%S"),
-        "- 变异体：%d（击杀 %d / 存活 %d，另有 %d 个无覆盖行变异点被排除）" % (
-            len(results), len(killed), len(survived), len(excluded)),
+        f'- 生成：{time.strftime("%Y-%m-%d %H:%M:%S")}',
+        "- 变异体：%d（击杀 %d / 存活 %d，另有 %d 个无覆盖行变异点被排除）"
+        % (len(results), len(killed), len(survived), len(excluded)),
         "- **击杀率：%.2f%%**（目标 ≥90%%）" % kill_rate,
         "",
         "## 按算子",
@@ -439,10 +455,42 @@ def main():
         lines += ["", "## 存活变异体（%d）" % len(survived), "",
                   "| 文件:行 | 算子 | 原文 → 变异 |", "|---|---|---|"]
         for x in survived:
-            snippet = ("%s → %s" % (x["orig"][:40], x["repl"][:40])).replace("|", "\\|").replace("\n", " ")
+            snippet = f'{x["orig"][:40]} → {x["repl"][:40]}'.replace(
+                "|", "\\|"
+            ).replace("\n", " ")
             lines.append("| %s:%d | %s | `%s` |" % (x["file"], x["row"], x["op"], snippet))
     with open(os.path.join(ROOT, "docs", "mutation-report.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--list", action="store_true", help="只列变异点统计")
+    ap.add_argument("--max", type=int, default=0, help="最多执行 N 个变异体（冒烟）")
+    ap.add_argument("--only-op", default="", help="逗号分隔算子过滤")
+    args = ap.parse_args()
+
+    _assert_src_clean()
+
+    files = collect_target_files()
+    all_mutants = _gen_all_mutants(files)
+    _print_mutation_stats(all_mutants)
+    if args.list:
+        return
+
+    all_mutants = _filter_by_op(all_mutants, args.only_op)
+    mutants, excluded = _select_covered_mutants(all_mutants)
+    if args.max:
+        mutants = mutants[: args.max]
+
+    originals = _snapshot_originals(files)
+    results = _run_mutants(mutants, originals)
+
+    killed = [x for x in results if x["status"] == "KILLED"]
+    survived = [x for x in results if x["status"] == "SURVIVED"]
+    kill_rate = 100.0 * len(killed) / len(results) if results else 0.0
+    _write_results_json(results, excluded, killed, survived, kill_rate)
+    _write_report_md(results, excluded, killed, survived, kill_rate)
 
     print("[mutation] 完成：击杀率 %.2f%%（%d/%d），存活 %d → docs/mutation-report.md"
           % (kill_rate, len(killed), len(results), len(survived)))

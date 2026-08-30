@@ -74,11 +74,8 @@ def platform_l2_response(client, path, plaintext, encrypt_override=None):
     canonical = build_canonical(auth, "POST", path, "", canonical_headers(headers))
     sig = sign(client._suite, client._signer, canonical.encode("utf-8"), csprng=client._csprng)
     out = dict(headers)
-    out["x-wop-sign"] = "%s %s/%s/%s" % (
-        client._suite.security_req,
-        auth,
-        ";".join(sorted(headers)),
-        b64url_encode(sig),
+    out["x-wop-sign"] = (
+        f'{client._suite.security_req} {auth}/{";".join(sorted(headers))}/{b64url_encode(sig)}'
     )
     return out, wire
 
@@ -119,7 +116,7 @@ class TestBuildRequestL0:
 
     def test_expired_seconds_custom(self, rsa_client):
         draft = rsa_client.build_request("POST", PATH, b"x", expired_seconds=60)
-        assert draft.headers["x-wop-sign"].split(" ")[1].split("/")[0:2] == ["v1", "60"]
+        assert draft.headers["x-wop-sign"].split(" ")[1].split("/")[:2] == ["v1", "60"]
 
     def test_deterministic_replay(self, rsa_client):  # spec:§2 幂等
         d1 = rsa_client.build_request("POST", PATH, b"same")
@@ -255,7 +252,7 @@ class TestVerifyResponseL0:
         draft = rsa_client.build_request("POST", PATH, b"b")
         h = dict(draft.headers)
         suite, rest = h["x-wop-sign"].split(" ", 1)
-        h["x-wop-sign"] = suite + " " + "/".join(rest.split("/")[:3])
+        h["x-wop-sign"] = f"{suite} " + "/".join(rest.split("/")[:3])
         assert not rsa_client.verify_response(h, draft.wire_body, PATH).ok
 
     def test_bad_version_rejected(self, rsa_client):
@@ -264,7 +261,7 @@ class TestVerifyResponseL0:
         suite, rest = h["x-wop-sign"].split(" ", 1)
         segs = rest.split("/")
         segs[0] = "v2"
-        h["x-wop-sign"] = suite + " " + "/".join(segs)
+        h["x-wop-sign"] = f"{suite} " + "/".join(segs)
         assert not rsa_client.verify_response(h, draft.wire_body, PATH).ok
 
     def test_tampered_body_hits_digest_check(self, rsa_client):  # spec:F6/D2 顺序②
@@ -295,7 +292,7 @@ class TestVerifyResponseL0:
         suite, rest = h["x-wop-sign"].split(" ", 1)
         segs = rest.split("/")
         segs[3] += "="
-        h["x-wop-sign"] = suite + " " + "/".join(segs)
+        h["x-wop-sign"] = f"{suite} " + "/".join(segs)
         assert not rsa_client.verify_response(h, draft.wire_body, PATH).ok
 
     def test_signed_header_missing_in_headers_rejected(self, rsa_client):
@@ -307,7 +304,7 @@ class TestVerifyResponseL0:
     def test_suite_in_sign_header_mismatch_rejected(self, rsa_client):
         draft = rsa_client.build_request("POST", PATH, b"b")
         h = dict(draft.headers)
-        h["x-wop-sign"] = SM_REQ + " " + h["x-wop-sign"].split(" ", 1)[1]
+        h["x-wop-sign"] = f"{SM_REQ} " + h["x-wop-sign"].split(" ", 1)[1]
         assert not rsa_client.verify_response(h, draft.wire_body, PATH).ok
 
     def test_verify_callback_same_flow(self, rsa_client):  # spec:F6 回调

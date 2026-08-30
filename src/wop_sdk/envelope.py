@@ -133,7 +133,7 @@ def unwrap_dek(suite: Suite, wrap_priv: KeyMaterial, wrapped: bytes) -> bytes:
 
 def build_dek_payload(suite: Suite, key: bytes, iv: bytes) -> str:
     """DEK 载荷 alg$base64url(key)$base64url(iv)（§6.1）。"""
-    return "%s$%s$%s" % (suite.message_alg, b64url_encode(key), b64url_encode(iv))
+    return f"{suite.message_alg}${b64url_encode(key)}${b64url_encode(iv)}"
 
 
 def parse_dek_payload(suite: Suite, payload: str) -> Tuple[bytes, bytes]:
@@ -150,13 +150,13 @@ def parse_dek_payload(suite: Suite, payload: str) -> Tuple[bytes, bytes]:
         raise ProtocolFormatError("DEK 载荷 alg 未知：%r" % alg)
     if alg != suite.message_alg:  # I3/I5：族比对先于 bulk 解密
         raise DekConsistencyError(
-            "DEK 算法 %s 与套件 %s 要求的 %s 不符" % (alg, suite.security_req, suite.message_alg)
+            f"DEK 算法 {alg} 与套件 {suite.security_req} 要求的 {suite.message_alg} 不符"
         )
     try:
         key = b64url_decode(key_b64u)
         iv = b64url_decode(iv_b64u)
     except ValueError as exc:
-        raise ProtocolFormatError("DEK 载荷 key/iv 编码非法：%s" % exc) from exc
+        raise ProtocolFormatError(f"DEK 载荷 key/iv 编码非法：{exc}") from exc
     expected_key_len = _AES_KEY_LEN if suite.family == "RSA" else _SM4_KEY_LEN
     if len(key) != expected_key_len or len(iv) != _IV_LEN:
         raise ProtocolFormatError(
@@ -179,7 +179,7 @@ def seal_l2(
     wire_body = json.dumps({"encrypted": b64url_encode(cipher_tag)}, separators=(",", ":")).encode()
     payload = build_dek_payload(suite, key, iv).encode("utf-8")
     wrapped = wrap_dek(suite, platform_pub, payload, csprng)
-    return wire_body, "L2;dek=" + b64url_encode(wrapped)
+    return wire_body, f"L2;dek={b64url_encode(wrapped)}"
 
 
 def open_l2(suite: Suite, wrap_priv: KeyMaterial, wire_body: bytes, dek_b64u: str) -> bytes:

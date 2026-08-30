@@ -10,10 +10,10 @@ from . import HttpResponse, _READ_CHUNK, read_capped
 def _urllib_chunks(resp) -> Iterator[bytes]:
     """resp.read(n) 循环取块，直至 EOF；配合 read_capped 流式限量。"""
     while True:
-        chunk = resp.read(_READ_CHUNK)
-        if not chunk:
+        if chunk := resp.read(_READ_CHUNK):
+            yield chunk
+        else:
             break
-        yield chunk
 
 
 class UrllibTransport:
