@@ -1,5 +1,9 @@
 # WOP Python SDK
+
+[![PyPI](https://img.shields.io/pypi/v/wop-python-sdk)](https://pypi.org/project/wop-python-sdk/) [![Python 3.9+](https://img.shields.io/pypi/pyversions/wop-python-sdk)](https://pypi.org/project/wop-python-sdk/) [![Release](https://img.shields.io/github/v/release/wop-platform/wop-python-sdk)](https://github.com/wop-platform/wop-python-sdk/releases)
+[![CI](https://github.com/wop-platform/wop-python-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/wop-platform/wop-python-sdk/actions/workflows/ci.yml) [![Mutation Gate](https://github.com/wop-platform/wop-python-sdk/actions/workflows/mutation.yml/badge.svg)](https://github.com/wop-platform/wop-python-sdk/actions/workflows/mutation.yml) [![License: MIT](https://img.shields.io/github/license/wop-platform/wop-python-sdk)](LICENSE)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-python-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-python-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 
 The official merchant-side Python client library for the WOP gateway. It encapsulates
 the protocol core (suite parsing / structured signing / content digest / L2 digital
