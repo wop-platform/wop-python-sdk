@@ -47,11 +47,15 @@ jobs:
           password: ${{ secrets.PYPI_TOKEN }}
       - name: Create GitHub Release
         # 仅在 PyPI 发布成功后执行（前置步骤失败即跳过）——Release 条目 = 已发布信号；
-        # 幂等：已存在（workflow 重跑）则跳过；说明用 --generate-notes 基线，发布后可随时人工编辑
+        # 资产：创建即挂 dist/*（sdist+wheel，二进制归档语义）；已存在（workflow 重跑）时
+        # 补传 --clobber 幂等，不重复建条目；说明用 --generate-notes 基线，发布后可随时人工编辑
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
-            || gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
-                 --title "wop-python-sdk ${VERSION}" --generate-notes
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
+              --title "wop-python-sdk ${VERSION}" --generate-notes dist/*
+          fi
