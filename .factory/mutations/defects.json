@@ -103,10 +103,10 @@
     },
     {
       "id": "B-105",
-      "description": "破坏摘要头合同：alg 与 hex 间恰一空格变双空格（D2/F4：build/check roundtrip 必炸）",
+      "description": "破坏摘要头合同：alg 与 hex 间恰一空格变双空格（D2/F4：build/check roundtrip 必炸）（锚点随 236f736 Sourcery f-string 化同步，变异语义不变：恰一空格→双空格）",
       "target": "src/wop_sdk/digest.py",
-      "find": "    return \"%s %s\" % (suite.digest_tag, compute_digest(suite, body).hex())",
-      "replace": "    return \"%s  %s\" % (suite.digest_tag, compute_digest(suite, body).hex())",
+      "find": "    return f\"{suite.digest_tag} {compute_digest(suite, body).hex()}\"",
+      "replace": "    return f\"{suite.digest_tag}  {compute_digest(suite, body).hex()}\"",
       "gate": "tests",
       "expect_block": true
     },
@@ -118,6 +118,24 @@
       "replace": "\"\"\"组装 `<alg> <小写hex>`（恰一空格，负例：仅措辞变更）。\"\"\"",
       "gate": "tests",
       "expect_block": false
+    },
+    {
+      "id": "D-01",
+      "description": "删除对外 API docstring：load_rsa_public_key 公钥解析契约说明被抹（docstring 门应对外 100%）",
+      "target": "src/wop_sdk/keys.py",
+      "find": "def load_rsa_public_key(material: str, expected_bits: Optional[int] = None) -> rsa.RSAPublicKey:\n    \"\"\"解析 RSA 公钥（SPKI DER，D12 材料串）；expected_bits 给定时校验长度与套件一致。\"\"\"\n",
+      "replace": "def load_rsa_public_key(material: str, expected_bits: Optional[int] = None) -> rsa.RSAPublicKey:\n",
+      "gate": "docstring",
+      "expect_block": true
+    },
+    {
+      "id": "D-02",
+      "description": "删除对外 API docstring：HttpxTransport.send 流式限量语义被抹（docstring 门应对外 100%）",
+      "target": "src/wop_sdk/transports/httpx_transport.py",
+      "find": "        \"\"\"httpx 流式执行请求：iter_bytes 逐块经 read_capped 限量后归一为 HttpResponse。\"\"\"\n        with self._client.stream(\n",
+      "replace": "        with self._client.stream(\n",
+      "gate": "docstring",
+      "expect_block": true
     }
   ]
 }

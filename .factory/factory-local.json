@@ -34,6 +34,7 @@
   ],
   "review_basis": "CONTRIBUTING.md 规格引用（wop-specs/sdk/wop-sdk-spec.md）+ 既有测试形态",
   "final_gate_cmd": "scripts/run_tests.sh --no-lock",
+  "docstring_gate_cmd": "scripts/docstring_gate.py",
   "pr_review_skills": [],
   "upstream_repo": "im47cn/awesome-rules",
   "upstream_path": "~/sources/awesome-rules",
