@@ -5,6 +5,8 @@
 #   `%d` 语义（非整数输入截断为协议值），不可移除
 # - use-fstring-for-concatenation：test_envelope.py:234 f-string 表达式含反斜杠在
 #   Python 3.9–3.11 是语法错误（sourcery-ai 评论 #3890071896），拼接是正确修复
+# - low-code-quality：2026-09-01 评审保留（与上游 awesome-rules 对齐）——
+#   长 main 顺序流程的聚合标签，无可操作子建议，拆分收益边际
 # 其余规则全开；新增触发点由 CI gate（sourcery-review-gate.yml）拦截。
 version: '1'
 
@@ -27,6 +29,7 @@ rule_settings:
   disable:
   - no-loop-in-tests
   - no-conditionals-in-tests
+  - low-code-quality
   - remove-unnecessary-cast
   - use-fstring-for-concatenation
   rule_types:
