@@ -25,6 +25,7 @@ class UrllibTransport:
     def send(
         self, method: str, url: str, headers: Dict[str, str], body: Optional[bytes]
     ) -> HttpResponse:
+        """urllib 执行请求：响应体按块流式限量；4xx/5xx 归一返回 HTTPError body 而非抛异常。"""
         req = urllib.request.Request(url, data=body, method=method)
         for name, value in headers.items():
             req.add_header(name, value)

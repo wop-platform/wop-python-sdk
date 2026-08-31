@@ -108,6 +108,7 @@ class WopClient:
 
     @property
     def suite(self) -> Suite:
+        """当前生效的密码套件（构造时由 config.suite 解析定档）。"""
         return self._suite
 
     # ---------- 出向 ----------

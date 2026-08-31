@@ -24,6 +24,7 @@ class RequestsTransport:
     def send(
         self, method: str, url: str, headers: Dict[str, str], body: Optional[bytes]
     ) -> HttpResponse:
+        """requests 流式执行请求（stream=True）：iter_content 逐块经 read_capped 限量后归一。"""
         resp = self._session.request(
             method, url, headers=headers, data=body, stream=True
         )
@@ -38,6 +39,7 @@ class RequestsTransport:
         )
 
     def close(self) -> None:
+        """关闭底层 requests.Session（释放连接池）。"""
         self._session.close()
 
     def __enter__(self) -> "RequestsTransport":

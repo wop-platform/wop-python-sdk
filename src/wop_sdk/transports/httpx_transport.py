@@ -24,6 +24,7 @@ class HttpxTransport:
     def send(
         self, method: str, url: str, headers: Dict[str, str], body: Optional[bytes]
     ) -> HttpResponse:
+        """httpx 流式执行请求：iter_bytes 逐块经 read_capped 限量后归一为 HttpResponse。"""
         with self._client.stream(
             method, url, headers=headers, content=body
         ) as resp:
@@ -35,6 +36,7 @@ class HttpxTransport:
             )
 
     def close(self) -> None:
+        """关闭底层 httpx.Client（释放连接池）。"""
         self._client.close()
 
     def __enter__(self) -> "HttpxTransport":

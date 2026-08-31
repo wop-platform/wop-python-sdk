@@ -52,6 +52,7 @@ def _material_to_der(material: str) -> bytes:
 
 
 def load_rsa_public_key(material: str, expected_bits: Optional[int] = None) -> rsa.RSAPublicKey:
+    """解析 RSA 公钥（SPKI DER，D12 材料串）；expected_bits 给定时校验长度与套件一致。"""
     der = _material_to_der(material)
     try:
         key = load_der_public_key(der)
@@ -67,6 +68,7 @@ def load_rsa_public_key(material: str, expected_bits: Optional[int] = None) -> r
 
 
 def load_rsa_private_key(material: str, expected_bits: Optional[int] = None) -> rsa.RSAPrivateKey:
+    """解析 RSA 私钥（PKCS#8 DER 无口令，D12 材料串）；expected_bits 给定时校验长度与套件一致。"""
     der = _material_to_der(material)
     try:
         key = load_der_private_key(der, password=None)
@@ -82,6 +84,7 @@ def load_rsa_private_key(material: str, expected_bits: Optional[int] = None) -> 
 
 
 def load_sm2_public_key(material: str) -> Sm2PublicKey:
+    """解析 SM2 公钥：未压缩点 04‖X‖Y 共 65 字节，且必须落在 sm2p256v1 曲线上（I5）。"""
     der = _material_to_der(material)
     if len(der) != 65 or der[0] != 0x04:
         raise KeyMaterialError(
@@ -96,6 +99,7 @@ def load_sm2_public_key(material: str) -> Sm2PublicKey:
 
 
 def load_sm2_private_key(material: str) -> bytes:
+    """解析 SM2 私钥：32 字节大端标量 d，取值范围 [1, n)（D12/I5）。"""
     der = _material_to_der(material)
     if len(der) != 32:
         raise KeyMaterialError("SM2 私钥必须为 32 字节大端标量 d，实际 %d 字节" % len(der))

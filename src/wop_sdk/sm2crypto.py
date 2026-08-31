@@ -39,6 +39,7 @@ class Sm2Ops(CryptSM2):
 
 
 def _point_on_curve(xy_hex: str) -> bool:
+    """点在 sm2p256v1 曲线上判定：y² ≡ x³+ax+b (mod p)（I5）。"""
     x = int(xy_hex[:64], 16)
     y = int(xy_hex[64:], 16)
     return (y**2 - (x**2 * x + _A * x + _B)) % _P == 0

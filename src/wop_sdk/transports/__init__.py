@@ -47,9 +47,12 @@ class HttpResponse:
 
 @runtime_checkable
 class Transport(Protocol):
+    """传输适配器协议（Q1）：实现方消费完整请求并归一响应，负责流式限量。"""
+
     def send(
         self, method: str, url: str, headers: Dict[str, str], body: Optional[bytes]
     ) -> HttpResponse:
+        """发送完整 HTTP 请求 → HttpResponse；响应体须流式读取并受 11MB 上限约束。"""
         ...  # pragma: no cover —— Protocol 声明
 
 

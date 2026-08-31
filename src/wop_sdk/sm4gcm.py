@@ -34,6 +34,7 @@ class _Sm4Block:
 
 
 def _ghash(h: int, aad: bytes, cipher: bytes) -> int:
+    """GHASH（SP 800-38D）：AAD‖C 零填充 + 64b 位长尾，逐 16B 块在 GF(2^128) 累乘。"""
     pad_a = (16 - len(aad) % 16) % 16
     pad_c = (16 - len(cipher) % 16) % 16
     data = (

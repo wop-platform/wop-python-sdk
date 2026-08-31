@@ -66,6 +66,7 @@ def message_decrypt(suite: Suite, key: bytes, iv: bytes, cipher_tag: bytes, aad:
 # OAEP 显式参数化（F2/D10）：OAEP 摘要 SHA-256 + MGF1 摘要显式钉死 SHA-256 + 空 label。
 # JCA 串 OAEPWithSHA-256AndMGF1Padding 的 MGF1 默认 SHA-1，禁止依赖默认值。
 def _oaep_params() -> _rsa_padding.OAEP:
+    """OAEP 参数钉死（F2/D10）：摘要与 MGF1 均 SHA-256、空 label——防 JCA 默认 MGF1=SHA-1 陷阱。"""
     return _rsa_padding.OAEP(
         mgf=_rsa_padding.MGF1(algorithm=hashes.SHA256()),
         algorithm=hashes.SHA256(),
