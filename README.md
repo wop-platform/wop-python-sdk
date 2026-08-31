@@ -1,7 +1,7 @@
 # WOP Python SDK
 
 [![PyPI](https://img.shields.io/pypi/v/wop-python-sdk)](https://pypi.org/project/wop-python-sdk/) [![Python 3.9+](https://img.shields.io/pypi/pyversions/wop-python-sdk)](https://pypi.org/project/wop-python-sdk/) [![Release](https://img.shields.io/github/v/release/wop-platform/wop-python-sdk)](https://github.com/wop-platform/wop-python-sdk/releases)
-![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-python-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-python-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+[![Coverage](https://img.shields.io/badge/coverage-99.78%25-brightgreen](https://github.com/wop-platform/wop-python-sdk/actions/workflows/ci.yml) [![Gherkin](https://img.shields.io/badge/bdd-21%20scenarios-orange)](tests/features/wop_merchant.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-python-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-python-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 
 WOP 网关商户侧官方 Python 客户端库：封装协议核心（套件解析 / 结构化签名 / 内容摘要 /
