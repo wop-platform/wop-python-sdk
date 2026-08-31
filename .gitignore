@@ -17,8 +17,6 @@ venv/
 .factory/worktrees/
 .factory/metrics/
 .factory/var/
-.factory/.pytest_cache/
 .factory/regression/**/out/
-.factory/prompts/__pycache__/
 .factory/feedback-log.jsonl
 .factory/upstream-lock.json
