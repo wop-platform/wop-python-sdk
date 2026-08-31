@@ -1,0 +1,42 @@
+name: mutation
+
+# 变异测试 nightly：覆盖率 100% 只是必要条件，击杀率度量测试集对
+# 条件/数学/返回值/常量/控制流变异的杀伤力。PR 级跑太慢（本地 M4 全量 ~6.5 分钟，
+# CI runner 更慢），故 schedule 驱动；--min-kill-rate 95 为门禁（默认 90，nightly 收紧）。
+on:
+  schedule:
+    - cron: "30 3 * * *" # UTC 03:30（避开 ci.yml 周一 03:00 高峰）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # 与 ci.yml test 作业同源安装：SDK 运行时依赖 + 测试工具链（含 BDD，回退测试集会跑到）
+          pip install -e '.[httpx,requests]' pytest pytest-bdd pytest-cov 'coverage[toml]'
+      - name: Mutation testing (kill rate gate ≥95%, equivalents excluded)
+        run: python3 scripts/mutation_test.py --min-kill-rate 95
+      - name: Upload mutation report
+        if: always() # 门禁失败时报告更要留档（存活体清单即待办）
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: |
+            docs/mutation-report.md
+            docs/mutation-results.json
+          if-no-files-found: warn
