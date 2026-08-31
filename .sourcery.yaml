@@ -1,0 +1,36 @@
+# Sourcery 规则保留清单（显式化"评论清零"的边界）。
+# 2026-08-31 评审确认的保留项：
+# - no-loop-in-tests / no-conditionals-in-tests：测试内循环/条件断言是惯用法（初轮 33 保留的主体）
+# - remove-unnecessary-cast：client.py:168 int() 截断是 sourcery-ai 评论 #3890071907 要求的
+#   `%d` 语义（非整数输入截断为协议值），不可移除
+# - use-fstring-for-concatenation：test_envelope.py:234 f-string 表达式含反斜杠在
+#   Python 3.9–3.11 是语法错误（sourcery-ai 评论 #3890071896），拼接是正确修复
+# 其余规则全开；新增触发点由 CI gate（sourcery-review-gate.yml）拦截。
+version: '1'
+
+ignore:
+- .git
+- env
+- .env
+- .tox
+- node_modules
+- vendor
+- venv
+- .venv
+- .pytest_cache
+- .mypy_cache
+- .ruff_cache
+
+rule_settings:
+  enable:
+  - default
+  disable:
+  - no-loop-in-tests
+  - no-conditionals-in-tests
+  - remove-unnecessary-cast
+  - use-fstring-for-concatenation
+  rule_types:
+  - refactoring
+  - suggestion
+  - comment
+  python_version: '3.9'
