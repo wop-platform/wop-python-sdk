@@ -165,7 +165,7 @@ class WopClient:
             else:
                 app_headers[low] = str(value).strip()
 
-        auth = "v1/%d" % expired_seconds
+        auth = f"v1/{int(expired_seconds)}"
         canonical = build_canonical(
             auth, safe_method, path, query_string or "", canonical_headers(headers)
         )
