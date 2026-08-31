@@ -18,11 +18,12 @@ def canonical_headers(headers: Optional[Dict[str, str]]) -> str:
     名称 ASCII 升序，行间 '\\n' 连接，尾行不加 '\\n'。"""
     if not headers:
         return ""
-    normalized = {}
-    for name, value in headers.items():
-        normalized[trimall(name).lower()] = trimall(value)
+    normalized = {
+        trimall(name).lower(): trimall(value)
+        for name, value in headers.items()
+    }
     return "\n".join(
-        "%s:%s" % (java_urlencode(k), java_urlencode(normalized[k]))
+        f"{java_urlencode(k)}:{java_urlencode(normalized[k])}"
         for k in sorted(normalized)
     )
 

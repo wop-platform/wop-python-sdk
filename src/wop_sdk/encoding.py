@@ -85,6 +85,4 @@ def java_urlencode(text: Optional[str]) -> str:
 
 def trimall(text: Optional[str]) -> str:
     """去首尾空白，连续空白折叠为单个空格（F2，对照 CanonicalRequestBuilder.trimall）。"""
-    if text is None:
-        return ""
-    return re.sub(r"\s+", " ", text.strip())
+    return "" if text is None else re.sub(r"\s+", " ", text.strip())

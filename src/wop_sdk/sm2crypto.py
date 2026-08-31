@@ -41,7 +41,7 @@ class Sm2Ops(CryptSM2):
 def _point_on_curve(xy_hex: str) -> bool:
     x = int(xy_hex[:64], 16)
     y = int(xy_hex[64:], 16)
-    return (y * y - (x * x * x + _A * x + _B)) % _P == 0
+    return (y**2 - (x**2 * x + _A * x + _B)) % _P == 0
 
 
 def sm2_sign_with_sm3(ops: Sm2Ops, data: bytes, k_hex: str) -> bytes:
@@ -72,7 +72,7 @@ def sm2_encrypt(ops: Sm2Ops, csprng, plaintext: bytes) -> bytes:
     x2, y2 = x2y2[:64], x2y2[64:]
     c2 = _xor_kdf(plaintext, x2y2)
     c3 = _sm3.sm3_hash(list(bytes.fromhex(x2 + plaintext.hex() + y2)))
-    return bytes.fromhex("04" + c1_xy + c3) + c2
+    return bytes.fromhex(f"04{c1_xy}{c3}") + c2
 
 
 def sm2_decrypt(ops: Sm2Ops, cipher: bytes) -> bytes:

@@ -56,7 +56,7 @@ def load_rsa_public_key(material: str, expected_bits: Optional[int] = None) -> r
     try:
         key = load_der_public_key(der)
     except (InvalidKey, ValueError, TypeError) as exc:
-        raise KeyMaterialError("RSA 公钥解析失败（应为 SPKI DER Base64/PEM）: %s" % exc) from exc
+        raise KeyMaterialError(f"RSA 公钥解析失败（应为 SPKI DER Base64/PEM）: {exc}") from exc
     if not isinstance(key, rsa.RSAPublicKey):
         raise KeyMaterialError("非 RSA 公钥材料")
     if expected_bits is not None and key.key_size != expected_bits:
@@ -71,7 +71,7 @@ def load_rsa_private_key(material: str, expected_bits: Optional[int] = None) -> 
     try:
         key = load_der_private_key(der, password=None)
     except (InvalidKey, ValueError, TypeError) as exc:
-        raise KeyMaterialError("RSA 私钥解析失败（应为 PKCS#8 DER Base64/PEM）: %s" % exc) from exc
+        raise KeyMaterialError(f"RSA 私钥解析失败（应为 PKCS#8 DER Base64/PEM）: {exc}") from exc
     if not isinstance(key, rsa.RSAPrivateKey):
         raise KeyMaterialError("非 RSA 私钥材料")
     if expected_bits is not None and key.key_size != expected_bits:

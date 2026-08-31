@@ -52,21 +52,17 @@ def parse_suite(security_req: Optional[str]) -> Suite:
         )
     _, key_alg, digest_alg = parts
     if key_alg not in _KEY_ALGORITHMS:
-        raise UnsupportedSuiteError("不支持的密钥算法：%s" % key_alg)
+        raise UnsupportedSuiteError(f"不支持的密钥算法：{key_alg}")
     if digest_alg not in _DIGEST_ALGORITHMS:
-        raise UnsupportedSuiteError("不支持的摘要算法：%s" % digest_alg)
+        raise UnsupportedSuiteError(f"不支持的摘要算法：{digest_alg}")
     family, key_bits = _KEY_ALGORITHMS[key_alg]
     digest_family, digest_tag = _DIGEST_ALGORITHMS[digest_alg]
     # I5：国际/国密跨族组合禁止（§2.3）
     if family != digest_family:
         raise UnsupportedSuiteError(
-            "跨族算法组合被拒绝：%s（密钥族 %s 与摘要族 %s 不一致）"
-            % (security_req, family, digest_family)
+            f"跨族算法组合被拒绝：{security_req}（密钥族 {family} 与摘要族 {digest_family} 不一致）"
         )
-    if family == "RSA":
-        key_wrap_alg = _FAMILY_KEY_WRAP[key_bits]
-    else:
-        key_wrap_alg = "SM2"
+    key_wrap_alg = _FAMILY_KEY_WRAP[key_bits] if family == "RSA" else "SM2"
     return Suite(
         security_req=security_req,
         family=family,

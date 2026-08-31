@@ -72,7 +72,7 @@ def _quote(s: str) -> str:
 
 
 def _independent_canonical(headers, method, path) -> str:
-    lines = ["%s:%s" % (_quote(k), _quote(v)) for k, v in sorted(headers.items())]
+    lines = [f"{_quote(k)}:{_quote(v)}" for k, v in sorted(headers.items())]
     return "\n".join(["v1/1800", method, path, "", "\n".join(lines)])
 
 
@@ -80,10 +80,8 @@ def _platform_sign_rsa(headers, method, path, vec, suite_req=RSA_REQ):
     priv = load_der_private_key(base64.b64decode(vec["rsa3072"]["privatePkcs8B64"]), None)
     canonical = _independent_canonical(headers, method, path).encode("utf-8")
     sig = priv.sign(canonical, padding.PKCS1v15(), hashes.SHA256())
-    headers["x-wop-sign"] = "%s v1/1800/%s/%s" % (
-        suite_req,
-        ";".join(sorted(headers)),
-        _b64u(sig),
+    headers["x-wop-sign"] = (
+        f'{suite_req} v1/1800/{";".join(sorted(headers))}/{_b64u(sig)}'
     )
     return headers
 
@@ -101,7 +99,7 @@ def _platform_l0(vec, path, payload, *, with_digest=True, digest_of=None):
     h = _base_headers()
     if with_digest and body:
         target = body if digest_of is None else digest_of
-        h["x-wop-content-digest"] = "sha-256 " + hashlib.sha256(target).hexdigest()
+        h["x-wop-content-digest"] = f"sha-256 {hashlib.sha256(target).hexdigest()}"
     _platform_sign_rsa(h, "POST", path, vec)
     return h, body
 
@@ -111,7 +109,7 @@ def _platform_l2_rsa(vec, path, plaintext, *, wrong_key=False):
     cipher_key = other if wrong_key else key
     ct_tag = AESGCM(cipher_key).encrypt(iv, plaintext, b"")  # cryptography 原语（非 SDK Cipher 路径）
     wire = json.dumps({"encrypted": _b64u(ct_tag)}, separators=(",", ":")).encode("utf-8")
-    dek = "AES-256-GCM$%s$%s" % (_b64u(key), _b64u(iv))  # DEK 恒声明正确 key（错密钥仅作用于密文）
+    dek = f"AES-256-GCM${_b64u(key)}${_b64u(iv)}"
     pub = load_der_public_key(base64.b64decode(vec["rsa3072"]["publicSpkiB64"]))
     wrapped = pub.encrypt(
         dek.encode("utf-8"),
@@ -120,8 +118,8 @@ def _platform_l2_rsa(vec, path, plaintext, *, wrong_key=False):
         ),
     )
     h = _base_headers()
-    h["x-wop-content-digest"] = "sha-256 " + hashlib.sha256(wire).hexdigest()
-    h["x-wop-encrypt"] = "L2;dek=" + _b64u(wrapped)
+    h["x-wop-content-digest"] = f"sha-256 {hashlib.sha256(wire).hexdigest()}"
+    h["x-wop-encrypt"] = f"L2;dek={_b64u(wrapped)}"
     _platform_sign_rsa(h, "POST", path, vec)
     return h, wire
 
@@ -136,15 +134,17 @@ def _platform_l2_sm2(vec, path, plaintext):
     key, iv = b"\x44" * 16, b"\x55" * 12
     ct_tag = sm4_gcm_encrypt(key, iv, plaintext)  # 底层原语（黄金向量锚定）
     wire = json.dumps({"encrypted": _b64u(ct_tag)}, separators=(",", ":")).encode("utf-8")
-    dek = "SM4-GCM$%s$%s" % (_b64u(key), _b64u(iv))
+    dek = f"SM4-GCM${_b64u(key)}${_b64u(iv)}"
     wrapped = sm2_encrypt(Sm2Ops(public_xy_hex=merchant_pub_xy), lambda n: b"\x66" * n, dek.encode())
     h = _base_headers()
-    h["x-wop-content-digest"] = "sm3 " + _sm3.sm3_hash(list(wire))
-    h["x-wop-encrypt"] = "L2;dek=" + _b64u(wrapped)
+    h["x-wop-content-digest"] = f"sm3 {_sm3.sm3_hash(list(wire))}"
+    h["x-wop-encrypt"] = f"L2;dek={_b64u(wrapped)}"
     canonical = _independent_canonical(h, "POST", path)
     e_hex = g._sm3_z(canonical.encode("utf-8"))  # gmssl 直签（非 wop_sdk.sm2crypto 包装）
     sig_hex = g.sign(bytes.fromhex(e_hex), "%064x" % int.from_bytes(b"\x77" * 32, "big"))
-    h["x-wop-sign"] = "%s v1/1800/%s/%s" % (SM_REQ, ";".join(sorted(h)), _b64u(bytes.fromhex(sig_hex)))
+    h["x-wop-sign"] = (
+        f'{SM_REQ} v1/1800/{";".join(sorted(h))}/{_b64u(bytes.fromhex(sig_hex))}'
+    )
     return h, wire
 
 
@@ -381,7 +381,7 @@ def then_digest_signed(ctx):
 
 @then("签名头以 WOP-RSA3072-SHA256 v1/1800 开头")
 def then_sign_prefix(ctx):
-    assert ctx.draft.headers["x-wop-sign"].startswith(RSA_REQ + " v1/1800/")
+    assert ctx.draft.headers["x-wop-sign"].startswith(f"{RSA_REQ} v1/1800/")
 
 
 @then("签名段为 512 字符 base64url")

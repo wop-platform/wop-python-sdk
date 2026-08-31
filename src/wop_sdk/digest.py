@@ -27,7 +27,7 @@ def compute_digest(suite: Suite, data: bytes) -> bytes:
 
 def build_digest_header(suite: Suite, body: bytes) -> str:
     """组装 `<alg> <小写hex>`（恰一空格）。"""
-    return "%s %s" % (suite.digest_tag, compute_digest(suite, body).hex())
+    return f"{suite.digest_tag} {compute_digest(suite, body).hex()}"
 
 
 def check_digest_header(suite: Suite, value: Optional[str]) -> str:
@@ -47,9 +47,7 @@ def check_digest_header(suite: Suite, value: Optional[str]) -> str:
     if tag != expected_tag:
         # I5：标签与套件族强耦合（sha-256 仅 RSA 族、sm3 仅 SM 族）
         if tag in ("sha-256", "sm3"):
-            raise UnsupportedSuiteError(
-                "digest 标签 %s 与套件族 %s 不符（跨族拒绝）" % (tag, suite.family)
-            )
+            raise UnsupportedSuiteError(f"digest 标签 {tag} 与套件族 {suite.family} 不符（跨族拒绝）")
         raise ProtocolFormatError("digest 标签未知：%r" % tag)
     if not _HEX64.match(hex_value):
         raise ProtocolFormatError("digest 值必须为 64 字符小写 hex，实际 %r" % hex_value)
