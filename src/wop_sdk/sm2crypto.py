@@ -8,9 +8,13 @@
    C1C2C3 旧国标顺序密文在此必然失败（顺序钉死负向量的拦截点）；
 3. gmssl ``encrypt``/``random_hex`` 使用 ``random.choice``（非 CSPRNG）——本模块的 k
    一律由调用方注入（生产走 csprng，测试走固定向量，I4）。
+4. gmssl ``_sm3_z`` 硬编码 userId='1234567812345678'（'0080'+'3132…'）——本类覆写为
+   按构造参数 ``user_id`` 计算（D14：ZA userId = 出向 x-wop-appkey 值，禁静默回退默认）。
 """
+import binascii
 from typing import Optional, cast
 
+from gmssl import func
 from gmssl import sm3 as _sm3
 from gmssl.sm2 import CryptSM2, default_ecc_table
 
@@ -25,10 +29,21 @@ _MAX_K_RETRY = 256
 
 
 class Sm2Ops(CryptSM2):
-    """SM2 曲线运算封装（无可变共享状态）。"""
+    """SM2 曲线运算封装（无可变共享状态）。
 
-    def __init__(self, private_key_hex: Optional[str] = None, public_xy_hex: Optional[str] = None):
+    ``user_id`` 为 ZA 计算的 ID（GM/T 0003.2）——D14 钉死为出向 x-wop-appkey 值
+    （= config.appKey 序列化结果）；None 表示未配置，签名/验签时抛 KeyMaterialError，
+    禁止回退 gmssl 硬编码默认。
+    """
+
+    def __init__(
+        self,
+        private_key_hex: Optional[str] = None,
+        public_xy_hex: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ):
         super().__init__(private_key_hex or "00" * 32, "00" * 128)
+        self._user_id = user_id
         # 覆写绕过 lstrip 缺陷；public_key 恒为 X‖Y（128+128 hex，无 04 前缀）
         if public_xy_hex is not None:
             if len(public_xy_hex) != 64 * 2:
@@ -36,6 +51,29 @@ class Sm2Ops(CryptSM2):
             self.public_key = public_xy_hex
         if private_key_hex is not None:
             self.private_key = private_key_hex
+    def _sm3_z(self, data: bytes) -> str:
+        """ZA = SM3(ENTL‖ID‖a‖b‖xG‖yG‖xA‖yA)（GM/T 0003.2，D14）。
+
+        gmssl 原生实现将 ID 硬编码为 '1234567812345678'（'0080'+'3132…' hex）；
+        本覆写按 ``self._user_id`` 计算 ENTL 与 ID 段，缺失即抛 KeyMaterialError
+        （configuration 类，禁止静默回退默认值）。
+        """
+        if not self._user_id:
+            raise KeyMaterialError("SM2 签名/验签必须显式指定 userId（D14：取 config.appKey）")
+        uid = self._user_id.encode("utf-8")
+        entl = format(len(uid) * 8, "04x")  # 2 字节大端 ID 比特长度 hex；'0080' = 128bit 特例
+        z = (
+            entl
+            + uid.hex()
+            + self.ecc_table["a"]
+            + self.ecc_table["b"]
+            + self.ecc_table["g"]
+            + self.public_key
+        )
+        z_bytes = binascii.a2b_hex(z)
+        za = _sm3.sm3_hash(func.bytes_to_list(z_bytes))
+        m_ = (za + data.hex()).encode("utf-8")
+        return _sm3.sm3_hash(func.bytes_to_list(binascii.a2b_hex(m_)))
 
 
 def _point_on_curve(xy_hex: str) -> bool:
@@ -45,7 +83,7 @@ def _point_on_curve(xy_hex: str) -> bool:
 
 
 def sm2_sign_with_sm3(ops: Sm2Ops, data: bytes, k_hex: str) -> bytes:
-    """SM3withSM2 签名：e = SM3(ZA‖M)，ZA userId = '1234567812345678'；输出裸 r‖s 64B。"""
+    """SM3withSM2 签名：e = SM3(ZA‖M)，ZA userId 取 ops.user_id（D14，见 Sm2Ops）；输出裸 r‖s 64B。"""
     e_hex = ops._sm3_z(data)
     sig_hex = cast(str, ops.sign(bytes.fromhex(e_hex), k_hex))
     return bytes.fromhex(sig_hex)

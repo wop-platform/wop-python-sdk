@@ -11,6 +11,7 @@ from wop_sdk.canonical import build_canonical, canonical_headers
 from wop_sdk.client import RequestDraft, WopClient, WopConfig
 from wop_sdk.digest import build_digest_header
 from wop_sdk.encoding import b64url_encode
+from wop_sdk.errors import ConfigurationError
 from wop_sdk.envelope import seal_l2
 from wop_sdk.signature import sign
 
@@ -134,12 +135,12 @@ class TestBuildRequestL0:
         draft = rsa_client.build_request("POST", PATH, b"x")
         assert draft.headers.get("content-type") == "application/json"
 
-    def test_invalid_level_rejected(self, rsa_client):
-        with pytest.raises(ValueError):
+    def test_invalid_level_rejected(self, rsa_client):  # spec:2.2 configuration 类
+        with pytest.raises(ConfigurationError):
             rsa_client.build_request("POST", PATH, b"x", level="L3")
 
-    def test_l2_without_body_rejected(self, rsa_client):
-        with pytest.raises(ValueError):
+    def test_l2_without_body_rejected(self, rsa_client):  # spec:2.2 configuration 类
+        with pytest.raises(ConfigurationError):
             rsa_client.build_request("POST", PATH, level="L2")
 
     def test_query_string_signed_in_canonical(self, rsa_client):

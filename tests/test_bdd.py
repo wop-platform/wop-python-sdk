@@ -28,6 +28,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 import wop_sdk.client as client_mod
 from wop_sdk.client import WopClient, WopConfig
 from wop_sdk.errors import (
+    ConfigurationError,
     DecryptError,
     DigestMismatchError,
     ProtocolFormatError,
@@ -140,7 +141,13 @@ def _platform_l2_sm2(vec, path, plaintext):
     h["x-wop-content-digest"] = f"sm3 {_sm3.sm3_hash(list(wire))}"
     h["x-wop-encrypt"] = f"L2;dek={_b64u(wrapped)}"
     canonical = _independent_canonical(h, "POST", path)
-    e_hex = g._sm3_z(canonical.encode("utf-8"))  # gmssl 直签（非 wop_sdk.sm2crypto 包装）
+    # D14：平台按商户出向 appKey（= x-wop-appkey 值）计算 ZA userId 签名——
+    # 独立手拼 ENTL‖ID‖a‖b‖g‖pub（不经 wop_sdk.sm2crypto 包装，D5 纪律不变）
+    uid = b"app_sm_001"  # 与商户端 _sm_client app_key 同源
+    entl = format(len(uid) * 8, "04x")
+    z = entl + uid.hex() + g.ecc_table["a"] + g.ecc_table["b"] + g.ecc_table["g"] + g.public_key
+    za = _sm3.sm3_hash(list(bytes.fromhex(z)))
+    e_hex = _sm3.sm3_hash(list(bytes.fromhex(za + canonical.encode("utf-8").hex())))
     sig_hex = g.sign(bytes.fromhex(e_hex), "%064x" % int.from_bytes(b"\x77" * 32, "big"))
     h["x-wop-sign"] = (
         f'{SM_REQ} v1/1800/{";".join(sorted(h))}/{_b64u(bytes.fromhex(sig_hex))}'
@@ -306,7 +313,7 @@ def merchant_bad_suite(ctx, suite, vectors):
 def merchant_bad_level(ctx):
     try:
         ctx.client.build_request("POST", PATH, ORDER, level="L3")
-    except ValueError as exc:
+    except ConfigurationError as exc:
         ctx.error = exc
 
 
@@ -445,9 +452,9 @@ def then_cross_family_message(ctx):
     assert "跨族" in str(ctx.error)
 
 
-@then("抛出 ValueError")
-def then_value_error(ctx):
-    assert isinstance(ctx.error, ValueError)
+@then("抛出 ConfigurationError")
+def then_configuration_error(ctx):  # spec:2.2
+    assert isinstance(ctx.error, ConfigurationError)
 
 
 @then("校验通过且明文为下单结果报文")

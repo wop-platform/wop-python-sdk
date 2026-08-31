@@ -126,8 +126,12 @@ def _wire_bytes(b64u: str) -> bytes:
     return b64url_decode(b64u) if b64u else b""
 
 
-def _interop_client(vec_keys, suite: str, csprng=None) -> WopClient:
-    """按套件从黄金向量取密钥构造客户端（与 crypto-vectors.json 同源，镜像 Go interopClient）。"""
+def _interop_client(vec_keys, suite: str, csprng=None, app_key: str = "app_interop_001") -> WopClient:
+    """按套件从黄金向量取密钥构造客户端（与 crypto-vectors.json 同源，镜像 Go interopClient）。
+
+    app_key：build 用例为 'app_interop_001'（x-wop-appkey 头比对）；SM2 verify 用例须显式
+    注入向量夹具 sm2UserId（fixture 平台响应签名按该 userId 生成，D14：向量固定值仅作夹具）。
+    """
     if suite == "WOP-RSA4096-SHA256":
         merchant = vec_keys["rsa4096"]["privatePkcs8B64"]
         platform = vec_keys["rsa4096"]["publicSpkiB64"]
@@ -139,7 +143,7 @@ def _interop_client(vec_keys, suite: str, csprng=None) -> WopClient:
     kwargs = {"csprng": csprng} if csprng is not None else {}
     return WopClient(
         WopConfig(
-            app_key="app_interop_001",
+            app_key=app_key,
             suite=suite,
             merchant_private_key=merchant,
             platform_public_key=platform,
@@ -227,12 +231,15 @@ class TestInteropConformanceVerify:  # spec:interop-v1 消费要求 3
     混合大小写头名（p13，P7）由 verify_response 的小写化兜底覆盖。"""
 
     @pytest.fixture(scope="class")
-    def clients(self, vec_keys):
+    def clients(self, vec_keys, vectors):
         cache = {}
+        sm2_uid = vectors["inputs"]["sm2UserId"]
 
         def _client(suite):
             if suite not in cache:
-                cache[suite] = _interop_client(vec_keys, suite)
+                # spec:D14 SM2 verify：fixture 平台签名按向量 sm2UserId 生成，验签端 app_key 须同源
+                app_key = sm2_uid if suite == "WOP-SM2-SM3" else "app_interop_001"
+                cache[suite] = _interop_client(vec_keys, suite, app_key=app_key)
             return cache[suite]
 
         return _client

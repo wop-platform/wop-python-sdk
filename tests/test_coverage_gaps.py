@@ -10,7 +10,19 @@ from wop_sdk.client import WopClient, WopConfig
 from wop_sdk.digest import check_digest_header
 from wop_sdk.encoding import b64url_encode
 from wop_sdk.envelope import message_decrypt, message_encrypt, open_l2, unwrap_dek, wrap_dek
-from wop_sdk.errors import DecryptError, KeyMaterialError, ProtocolFormatError, SignatureVerifyError
+from wop_sdk.errors import (
+    ERROR_CATEGORIES,
+    ConfigurationError,
+    DecryptError,
+    DekConsistencyError,
+    DigestMismatchError,
+    KeyMaterialError,
+    ProtocolFormatError,
+    SignatureVerifyError,
+    SuiteParseError,
+    UnsupportedSuiteError,
+    WopSdkError,
+)
 from wop_sdk.keys import (
     load_rsa_private_key,
     load_rsa_public_key,
@@ -18,7 +30,7 @@ from wop_sdk.keys import (
     load_sm2_public_key,
 )
 from wop_sdk.signature import verify as sig_verify
-from wop_sdk.sm2crypto import Sm2Ops, sm2_decrypt
+from wop_sdk.sm2crypto import Sm2Ops, sm2_decrypt, sm2_sign_with_sm3
 from wop_sdk.sm4gcm import sm4_gcm_decrypt
 from wop_sdk.suites import parse_suite
 
@@ -36,11 +48,16 @@ def rsa_pair(vec_keys):
 
 
 @pytest.fixture(scope="module")
-def sm2_pair(vec_keys):
+def sm2_pair(vec_keys, vectors):
     k = vec_keys["sm2"]
     pub = load_sm2_public_key(k["publicPointB64"])
     d = load_sm2_private_key(k["privateDB64"])
-    return (Sm2Ops(public_xy_hex=pub.xy_hex), Sm2Ops(private_key_hex=d.hex(), public_xy_hex=pub.xy_hex))
+    # 验签路径需显式注入黄金向量 sm2UserId（D14：向量固定值仅作夹具，禁回退 gmssl 默认）
+    uid = vectors["inputs"]["sm2UserId"]
+    return (
+        Sm2Ops(public_xy_hex=pub.xy_hex, user_id=uid),
+        Sm2Ops(private_key_hex=d.hex(), public_xy_hex=pub.xy_hex, user_id=uid),
+    )
 
 
 @pytest.fixture(scope="module")
@@ -68,7 +85,7 @@ class TestClientGaps:
 
     def test_normalize_body_str_and_type_error(self, gap_rsa_client):
         assert gap_rsa_client._normalize_body("文本") == "文本".encode("utf-8")
-        with pytest.raises(TypeError):
+        with pytest.raises(ConfigurationError):
             gap_rsa_client._normalize_body(12345)
 
 
@@ -175,6 +192,12 @@ class TestSm2CryptoGaps:
         assert ops_priv_only.private_key == d.hex()
         ops_pub_only = Sm2Ops(public_xy_hex=pub.xy_hex)
         assert ops_pub_only.public_key == pub.xy_hex
+    def test_sign_without_user_id_rejected(self, vec_keys):
+        # spec:D14 否定式条款：缺 userId 禁静默回退 gmssl 默认，签名路径抛 KeyMaterialError
+        d = load_sm2_private_key(vec_keys["sm2"]["privateDB64"])
+        ops = Sm2Ops(private_key_hex=d.hex())  # 无 user_id（_sm3_z 立即拒绝）
+        with pytest.raises(KeyMaterialError):
+            sm2_sign_with_sm3(ops, b"payload", "%064x" % 1)
 
     def test_encrypt_k_resampling(self, sm2_pair):
         # k 越界重采样（I4：CSPRNG 采样点收敛）
@@ -202,3 +225,40 @@ class TestSm2CryptoGaps:
     def test_decrypt_bad_prefix_rejected(self, sm2_pair):
         with pytest.raises(DecryptError):
             sm2_decrypt(sm2_pair[1], b"\x03" + b"\x00" * 96)
+
+
+class TestErrorCategories:  # spec:2.2 category 闭集与 I7 文案纪律
+    def test_category_closed_set_exact(self):  # spec:2.2 否定式：多/少任一值即炸
+        assert ERROR_CATEGORIES == frozenset(
+            {"configuration", "parse", "unsupported", "integrity", "consistency", "signature", "decrypt"}
+        )
+
+    def test_every_error_class_maps_to_expected_category(self):  # spec:2.2 逐类枚举
+        mapping = {
+            ConfigurationError: "configuration",
+            KeyMaterialError: "configuration",
+            SuiteParseError: "parse",
+            ProtocolFormatError: "parse",
+            UnsupportedSuiteError: "unsupported",
+            DigestMismatchError: "integrity",
+            DekConsistencyError: "consistency",
+            SignatureVerifyError: "signature",
+            DecryptError: "decrypt",
+        }
+        for cls, expected in mapping.items():
+            assert cls.category == expected, cls.__name__
+
+    def test_base_class_unclassified_not_in_closed_set(self):  # spec:2.2 否定式
+        # 基类「未归类」空串不入闭集；SDK 不直接抛基类
+        assert WopSdkError.category == ""
+        assert WopSdkError.category not in ERROR_CATEGORIES
+
+    def test_i7_blur_messages_fixed(self):  # spec:2.2/I7 模糊文案恒定
+        assert str(SignatureVerifyError()) == "签名验证失败"
+        assert str(DecryptError()) == "解密失败"
+
+    def test_empty_appkey_rejected_as_configuration(self, vec_keys):  # spec:2.1/2.2
+        k = vec_keys["rsa3072"]
+        with pytest.raises(ConfigurationError) as exc:
+            WopClient(WopConfig("  ", "WOP-RSA3072-SHA256", k["privatePkcs8B64"], k["publicSpkiB64"]))
+        assert exc.value.category == "configuration"

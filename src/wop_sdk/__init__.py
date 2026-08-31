@@ -7,6 +7,7 @@ from importlib.metadata import PackageNotFoundError, version as _dist_version
 
 from .client import RequestDraft, VerifyResult, WopClient, WopConfig
 from .errors import (
+    ConfigurationError,
     DecryptError,
     DekConsistencyError,
     DigestMismatchError,
@@ -34,6 +35,7 @@ __all__ = [
     "Suite",
     "parse_suite",
     "WopSdkError",
+    "ConfigurationError",
     "SuiteParseError",
     "UnsupportedSuiteError",
     "ProtocolFormatError",

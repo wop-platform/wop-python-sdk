@@ -37,11 +37,13 @@ def k3072(vec_keys):
 
 
 @pytest.fixture(scope="module")
-def sm2m(vec_keys):
+def sm2m(vec_keys, vectors):
     k = vec_keys["sm2"]
     pub = load_sm2_public_key(k["publicPointB64"])
     d = load_sm2_private_key(k["privateDB64"])
-    return {"pub": pub, "d": d, "ops": Sm2Ops(d.hex(), pub.xy_hex)}
+    # spec:D14 黄金向量按 sm2UserId 生成（向量固定值仅作夹具，显式注入，禁回退 gmssl 默认）
+    uid = vectors["inputs"]["sm2UserId"]
+    return {"pub": pub, "d": d, "user_id": uid, "ops": Sm2Ops(d.hex(), pub.xy_hex, user_id=uid)}
 
 
 class TestRsaSignVectors:
@@ -143,7 +145,7 @@ class TestSm2VerifyNegative:
 
     def test_sign_via_client_api_uses_csprng_k(self, sm2m):
         # sign() 走 csprng 注入 k（I4：随机数生成点收敛）
-        ops = Sm2Ops(sm2m["d"].hex(), sm2m["pub"].xy_hex)
+        ops = Sm2Ops(sm2m["d"].hex(), sm2m["pub"].xy_hex, user_id=sm2m["user_id"])
         k = b"\x11" * 32
         sig = sign(SM2, ops, MSG_B, csprng=lambda n: k)
         assert len(sig) == 64
@@ -151,7 +153,7 @@ class TestSm2VerifyNegative:
 
     def test_sign_k_out_of_range_resampled(self, sm2m):
         # k ≥ n 或 k = 0 必须重采样（分支覆盖 + 正确性）
-        ops = Sm2Ops(sm2m["d"].hex(), sm2m["pub"].xy_hex)
+        ops = Sm2Ops(sm2m["d"].hex(), sm2m["pub"].xy_hex, user_id=sm2m["user_id"])
         n_bytes = bytes.fromhex("FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123")
         calls = [n_bytes, b"\x00" * 32, b"\x22" * 32]
         sig = sign(SM2, ops, MSG_B, csprng=_csprng_fixed(calls))
