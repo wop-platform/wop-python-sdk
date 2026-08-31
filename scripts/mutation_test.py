@@ -66,29 +66,34 @@ FALLBACK_TESTS = {
     "signature.py": ["tests/test_signature.py"],
     "canonical.py": ["tests/test_canonical.py"],
     "errors.py": ["tests/test_client.py"],
-    "sm2crypto.py": ["tests/test_envelope.py", "tests/test_interop.py"],
+    "sm2crypto.py": ["tests/test_envelope.py", "tests/test_interop.py", "tests/test_mutation_gaps.py"],
     "sm4gcm.py": ["tests/test_envelope.py", "tests/test_mutation_gaps.py"],
     "urllib_transport.py": ["tests/test_transports.py"],
     "httpx_transport.py": ["tests/test_transports.py"],
     "requests_transport.py": ["tests/test_transports.py"],
 }
 
-# 等价变异体白名单（文件:行:算子）：经人工逐条论证「行为不可观测」的存活体。
+# 等价变异体白名单（文件:行:算子 → 论证）：仅收录**严格不可观测**的变异体。
 # 命中者标注 EQUIVALENT 并从击杀率分母剔除（score = killed / (total − equivalent)）。
-# 纪律：入册必须附论证（docs/mutation-report.md 等价性分析节）；行号漂移导致失配、
-# 或白名单条目被测试击杀/不再生成时，启动时告警——防白名单静默腐化或滥用。
+# 纪律（PR #17 Sourcery 审查修正）：
+# - 论证是入册硬条件——无论证的条目启动即 fail（_validate_whitelist）；
+# - 概率近似（如重试上界 ±1 的 2^-2048）不是等价：csprng 可注入即可观测，
+#   此类位点必须补确定性杀测试，不得入册；
+# - 论证随白名单单一来源维护，每次全量运行自动写入报告等价体一节；
+# - 行号漂移/已被击杀/未生成时启动告警——防白名单静默腐化或滥用。
 EQUIVALENT_MUTANTS = {
-    # 字母表字符串尾部追加 → _B64URL_INDEX 多一个永不查询的键（字母表正则先行拒绝）
-    "src/wop_sdk/encoding.py:17:str-mut",
-    # int(hex_str, 16) → int(hex_str, 17)：十六进制数字全部是合法 base-17 数字，解析同值
-    "src/wop_sdk/sm2crypto.py:19:num-inc",
-    # CSPRNG 采样重试上界 256 → 257：二者均以 ≈1−2^-2048 概率首轮命中，行为不可区分
-    "src/wop_sdk/sm2crypto.py:24:num-inc",
-    # def __enter__(self) -> "HttpxTransport"：惰性求值注解字符串，运行时不可观测
-    "src/wop_sdk/transports/httpx_transport.py:40:str-mut",
-    # 同上（"RequestsTransport" 注解字符串）
-    "src/wop_sdk/transports/requests_transport.py:43:str-mut",
+    "src/wop_sdk/encoding.py:17:str-mut":
+        "字母表字符串尾部追加 → _B64URL_INDEX 仅多一个永不查询的键，"
+        "且字母表正则先于查表拒绝非 base64url 字符，行为不可观测",
+    "src/wop_sdk/transports/httpx_transport.py:40:str-mut":
+        "def __enter__(self) -> \"HttpxTransport\"：惰性求值返回类型注解字符串，运行时不可观测",
+    "src/wop_sdk/transports/requests_transport.py:43:str-mut":
+        "同上（\"RequestsTransport\" 注解字符串）",
 }
+
+# 教训存档（勿再犯）：sm2crypto.py:19 曾以「base-17 数字集包含十六进制数字 ⇒ 解析同值」
+# 入册——错在混淆「数字合法」与「位值不变」：base 17 改变每位权值，_N 增大 ≈55 倍，
+# 注入 b"\xff"*32 首采即合法。重试上界/边界测试补齐后当场击杀，告警机制拦截。
 
 DEFAULT_MIN_KILL_RATE = 90.0
 
@@ -498,9 +503,12 @@ def _write_report_md(results, excluded, killed, survived, kill_rate, equivalents
         if t:
             lines.append("| %s | %d/%d | %.1f%% |" % (op, k, t, 100.0 * k / t))
     if equivalents:
-        lines += ["", "## 等价变异体（%d，白名单自动标注）" % len(equivalents), "",
-                  "| 文件:行 | 算子 | 原文 → 变异 |", "|---|---|---|"]
-        lines.extend(_report_row(x) for x in equivalents)
+        lines += ["", "## 等价变异体（%d，白名单自动标注，论证随单一来源生成）" % len(equivalents), "",
+                  "| 文件:行 | 算子 | 原文 → 变异 | 论证 |", "|---|---|---|---|"]
+        for x in equivalents:
+            key = f'{x["file"]}:{x["row"]}:{x["op"]}'
+            rationale = EQUIVALENT_MUTANTS.get(key, "（缺失——告警已列）")
+            lines.append(_report_row(x).rstrip(" |") + " | " + rationale.replace("|", "\\|") + " |")
     if survived:
         lines += ["", "## 存活变异体（%d，需逐条归因：等价论证或补杀测试）" % len(survived), "",
                   "| 文件:行 | 算子 | 原文 → 变异 |", "|---|---|---|"]
@@ -523,9 +531,17 @@ def _annotate_equivalents(results):
                 anomalies.append(("已击杀，应移出白名单", key))
             elif x["status"] == "SURVIVED":
                 x["status"] = "EQUIVALENT"
-    for key in sorted(EQUIVALENT_MUTANTS - matched):
+    for key in sorted(EQUIVALENT_MUTANTS.keys() - matched):
         anomalies.append(("本轮未生成（行号漂移或位点消失）", key))
     return matched, anomalies
+
+
+
+def _validate_whitelist():
+    """入册硬条件：每条白名单必须携带非空论证（PR #17 Sourcery 评论 2 修正）。"""
+    missing = [k for k, v in EQUIVALENT_MUTANTS.items() if not (v or "").strip()]
+    if missing:
+        sys.exit("[mutation] 白名单条目无论证，拒绝运行：%s" % ", ".join(missing))
 
 
 def main():
@@ -540,7 +556,7 @@ def main():
     args = ap.parse_args()
 
     _assert_src_clean(allow_dirty=args.allow_dirty_src)
-
+    _validate_whitelist()
 
     files = collect_target_files()
     all_mutants = _gen_all_mutants(files)

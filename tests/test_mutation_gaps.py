@@ -20,8 +20,9 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from wop_sdk.client import WopConfig
-from wop_sdk.errors import KeyMaterialError
+from wop_sdk.errors import DecryptError, KeyMaterialError
 from wop_sdk.keys import Sm2PublicKey, load_sm2_private_key
+from wop_sdk.sm2crypto import Sm2Ops, sm2_encrypt
 from wop_sdk.sm4gcm import sm4_gcm_decrypt, sm4_gcm_encrypt
 
 _KEY16 = bytes(range(16))
@@ -69,3 +70,38 @@ class TestSm4GcmEmptyAadDefault:
         ct = sm4_gcm_encrypt(_KEY16, _IV12, b"payload-42", aad=b"")
         assert sm4_gcm_decrypt(_KEY16, _IV12, ct) == b"payload-42"
         assert sm4_gcm_decrypt(_KEY16, _IV12, ct, aad=b"") == b"payload-42"
+
+
+class TestSm2EncryptRetryCeiling:
+    """_MAX_K_RETRY 重试上界是可注入观测的硬边界（PR #17 Sourcery 审查修正）。
+
+    概率近似（真实 CSPRNG 连续越界 ≈2^-2048）≠ 等价：csprng 是注入点，
+    「连续 256 次越界后仍越界」与「第 257 次有效」行为分叉——原实现必须
+    DecryptError，重试上界 ±1 的变异体必须被此测试击杀。
+    """
+
+    @staticmethod
+    def _csprng(invalid_count):
+        state = {"n": 0}
+
+        def gen(size):
+            i = state["n"]
+            state["n"] += 1
+            if i < invalid_count:
+                return b"\xff" * size  # k = 2^(8·size)−1 ≥ N，恒越界
+            return b"\x00" * (size - 1) + b"\x01"  # k = 1，合法
+
+        return gen
+
+    @pytest.fixture()
+    def enc_ops(self, vectors):
+        xy = base64.b64decode(vectors["keys"]["sm2"]["publicPointB64"])[1:].hex()
+        return Sm2Ops(public_xy_hex=xy)
+
+    def test_ceiling_exhausted_raises(self, enc_ops):  # spec:mutation-kill I4 重试上界
+        with pytest.raises(DecryptError):
+            sm2_encrypt(enc_ops, self._csprng(256), b"payload")
+
+    def test_retry_then_success(self, enc_ops):  # 重试语义：越界后有效采样必须恢复
+        out = sm2_encrypt(enc_ops, self._csprng(3), b"payload")
+        assert out[0] == 0x04 and len(out) == 65 + 32 + len(b"payload")

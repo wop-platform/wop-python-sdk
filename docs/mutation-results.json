@@ -1,15 +1,14 @@
 {
  "kill_rate": 100.0,
- "killed": 858,
+ "killed": 862,
  "survived": 0,
- "equivalent": 5,
- "score_base": 858,
- "total": 863,
- "excluded_no_coverage": 6,
+ "equivalent": 3,
+ "score_base": 862,
+ "total": 865,
+ "excluded_no_coverage": 4,
  "whitelist_matched": [
   "src/wop_sdk/encoding.py:17:str-mut",
   "src/wop_sdk/sm2crypto.py:19:num-inc",
-  "src/wop_sdk/sm2crypto.py:24:num-inc",
   "src/wop_sdk/transports/httpx_transport.py:40:str-mut",
   "src/wop_sdk/transports/requests_transport.py:43:str-mut"
  ],
@@ -5875,7 +5874,7 @@
    "orig": "\"n\"",
    "repl": "\"n!\"",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5885,8 +5884,8 @@
    "end": 995,
    "orig": "16",
    "repl": "17",
-   "status": "EQUIVALENT",
-   "n_tests": 2
+   "status": "KILLED",
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5897,7 +5896,7 @@
    "orig": "16",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5908,7 +5907,7 @@
    "orig": "\"p\"",
    "repl": "\"p!\"",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5919,7 +5918,7 @@
    "orig": "16",
    "repl": "17",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5930,7 +5929,7 @@
    "orig": "16",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5941,7 +5940,7 @@
    "orig": "\"a\"",
    "repl": "\"a!\"",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5952,7 +5951,7 @@
    "orig": "16",
    "repl": "17",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5963,7 +5962,7 @@
    "orig": "16",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5974,7 +5973,7 @@
    "orig": "\"b\"",
    "repl": "\"b!\"",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5985,7 +5984,7 @@
    "orig": "16",
    "repl": "17",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -5996,7 +5995,7 @@
    "orig": "16",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6006,8 +6005,8 @@
    "end": 1127,
    "orig": "256",
    "repl": "257",
-   "status": "EQUIVALENT",
-   "n_tests": 2
+   "status": "KILLED",
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6018,7 +6017,7 @@
    "orig": "256",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 2
+   "n_tests": 3
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6029,7 +6028,7 @@
    "orig": "or",
    "repl": "and",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6040,7 +6039,7 @@
    "orig": "\"00\"",
    "repl": "\"00!\"",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6051,7 +6050,7 @@
    "orig": "*",
    "repl": "//",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6062,7 +6061,7 @@
    "orig": "32",
    "repl": "33",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6073,7 +6072,7 @@
    "orig": "32",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6084,7 +6083,7 @@
    "orig": "\"00\"",
    "repl": "\"00!\"",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6095,7 +6094,7 @@
    "orig": "*",
    "repl": "//",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6106,7 +6105,7 @@
    "orig": "128",
    "repl": "129",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6117,7 +6116,7 @@
    "orig": "128",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6128,7 +6127,7 @@
    "orig": "!=",
    "repl": "==",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6139,7 +6138,7 @@
    "orig": "64",
    "repl": "65",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6150,7 +6149,7 @@
    "orig": "64",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6161,7 +6160,7 @@
    "orig": "*",
    "repl": "//",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6172,7 +6171,7 @@
    "orig": "2",
    "repl": "3",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6183,7 +6182,7 @@
    "orig": "2",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 14
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6458,7 +6457,7 @@
    "orig": "32",
    "repl": "33",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 12
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6469,7 +6468,7 @@
    "orig": "32",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 12
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6480,7 +6479,7 @@
    "orig": "\"big\"",
    "repl": "\"big!\"",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 12
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6491,7 +6490,7 @@
    "orig": "1",
    "repl": "2",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 12
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6502,7 +6501,7 @@
    "orig": "1",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 12
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6513,7 +6512,7 @@
    "orig": "<=",
    "repl": "<",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 12
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6524,7 +6523,29 @@
    "orig": "<",
    "repl": "<=",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 12
+  },
+  {
+   "file": "src/wop_sdk/sm2crypto.py",
+   "row": 69,
+   "op": "raise-drop",
+   "start": 2915,
+   "end": 2949,
+   "orig": "raise DecryptError(\"解密失败\")",
+   "repl": "pass",
+   "status": "KILLED",
+   "n_tests": 1
+  },
+  {
+   "file": "src/wop_sdk/sm2crypto.py",
+   "row": 69,
+   "op": "str-mut",
+   "start": 2934,
+   "end": 2948,
+   "orig": "\"解密失败\"",
+   "repl": "\"解密失败!\"",
+   "status": "KILLED",
+   "n_tests": 1
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6535,7 +6556,7 @@
    "orig": "\"g\"",
    "repl": "\"g!\"",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6546,7 +6567,7 @@
    "orig": "64",
    "repl": "65",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6557,7 +6578,7 @@
    "orig": "64",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6568,7 +6589,7 @@
    "orig": "64",
    "repl": "65",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6579,7 +6600,7 @@
    "orig": "64",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6590,7 +6611,7 @@
    "orig": "+",
    "repl": "-",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6601,7 +6622,7 @@
    "orig": "+",
    "repl": "-",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6612,7 +6633,7 @@
    "orig": " bytes.fromhex(f\"04{c1_xy}{c3}\") + c2",
    "repl": " None",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6623,7 +6644,7 @@
    "orig": "f\"04{c1_xy}{c3}\"",
    "repl": "f\"04{c1_xy}{c3}!\"",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -6634,7 +6655,7 @@
    "orig": "+",
    "repl": "-",
    "status": "KILLED",
-   "n_tests": 10
+   "n_tests": 11
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7096,7 +7117,7 @@
    "orig": "\"utf-8\"",
    "repl": "\"utf-8!\"",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7107,7 +7128,7 @@
    "orig": "\"%%0%dx\"",
    "repl": "\"%%0%dx!\"",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7118,7 +7139,7 @@
    "orig": "*",
    "repl": "//",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7129,7 +7150,7 @@
    "orig": "2",
    "repl": "3",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7140,7 +7161,7 @@
    "orig": "2",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7151,7 +7172,7 @@
    "orig": " bytes.fromhex(form % (int(data.hex(), 16) ^ int(t, 16)))",
    "repl": " None",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7162,7 +7183,7 @@
    "orig": "16",
    "repl": "17",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7173,7 +7194,7 @@
    "orig": "16",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7184,7 +7205,7 @@
    "orig": "^",
    "repl": "&",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7195,7 +7216,7 @@
    "orig": "16",
    "repl": "17",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",
@@ -7206,7 +7227,7 @@
    "orig": "16",
    "repl": "0",
    "status": "KILLED",
-   "n_tests": 15
+   "n_tests": 16
   },
   {
    "file": "src/wop_sdk/sm2crypto.py",

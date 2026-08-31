@@ -1,9 +1,9 @@
 # 变异测试报告（wop-python-sdk）
 
 - 工具：`scripts/mutation_test.py`（自研 token 级变异器，PIT 不适用 Python）
-- 生成：2026-08-31 10:41:54
-- 变异体：863（击杀 858 / 存活 0 / 等价（白名单）5，另有 6 个无覆盖行变异点被排除）
-- **击杀率：100.00%**（= 击杀 858 / 计分基数 858；等价体已从分母剔除）
+- 生成：2026-08-31 13:18:14
+- 变异体：865（击杀 862 / 存活 0 / 等价（白名单）3，另有 4 个无覆盖行变异点被排除）
+- **击杀率：100.00%**（= 击杀 862 / 计分基数 862；等价体已从分母剔除）
 
 ## 按算子（等价体不计入）
 
@@ -17,19 +17,17 @@
 | arith-mul-div | 27/27 | 100.0% |
 | bitwise-and-or | 7/7 | 100.0% |
 | bitwise-xor | 8/8 | 100.0% |
-| num-inc | 134/134 | 100.0% |
+| num-inc | 136/136 | 100.0% |
 | num-zero | 125/125 | 100.0% |
-| str-mut | 233/233 | 100.0% |
+| str-mut | 234/234 | 100.0% |
 | bool-flip | 11/11 | 100.0% |
 | return-none | 68/68 | 100.0% |
-| raise-drop | 77/77 | 100.0% |
+| raise-drop | 78/78 | 100.0% |
 
-## 等价变异体（5，白名单自动标注）
+## 等价变异体（3，白名单自动标注，论证随单一来源生成）
 
-| 文件:行 | 算子 | 原文 → 变异 |
-|---|---|---|
-| src/wop_sdk/encoding.py:17 | str-mut | `"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm → "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm` |
-| src/wop_sdk/sm2crypto.py:19 | num-inc | `16 → 17` |
-| src/wop_sdk/sm2crypto.py:24 | num-inc | `256 → 257` |
-| src/wop_sdk/transports/httpx_transport.py:40 | str-mut | `"HttpxTransport" → "HttpxTransport!"` |
-| src/wop_sdk/transports/requests_transport.py:43 | str-mut | `"RequestsTransport" → "RequestsTransport!"` |
+| 文件:行 | 算子 | 原文 → 变异 | 论证 |
+|---|---|---|---|
+| src/wop_sdk/encoding.py:17 | str-mut | `"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm → "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm` | 字母表字符串尾部追加 → _B64URL_INDEX 仅多一个永不查询的键，且字母表正则先于查表拒绝非 base64url 字符，行为不可观测 |
+| src/wop_sdk/transports/httpx_transport.py:40 | str-mut | `"HttpxTransport" → "HttpxTransport!"` | def __enter__(self) -> "HttpxTransport"：惰性求值返回类型注解字符串，运行时不可观测 |
+| src/wop_sdk/transports/requests_transport.py:43 | str-mut | `"RequestsTransport" → "RequestsTransport!"` | 同上（"RequestsTransport" 注解字符串） |

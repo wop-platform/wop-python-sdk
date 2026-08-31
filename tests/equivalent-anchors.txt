@@ -1,0 +1,3 @@
+src/wop_sdk/encoding.py:17:str-mut:"ABCDEFGHIJKLMNOPQRSTUVW
+src/wop_sdk/transports/httpx_transport.py:40:str-mut:def __enter__(self) -> "
+src/wop_sdk/transports/requests_transport.py:43:str-mut:def __enter__(self) -> "
