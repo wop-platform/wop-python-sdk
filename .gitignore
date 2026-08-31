@@ -21,4 +21,3 @@ venv/
 .factory/regression/**/out/
 .factory/prompts/__pycache__/
 .factory/feedback-log.jsonl
-.factory/upstream-lock.json
