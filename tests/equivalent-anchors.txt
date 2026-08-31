@@ -1,0 +1,1 @@
+src/wop_sdk/encoding.py:17:str-mut:"ABCDEFGHIJKLMNOPQRSTUVW

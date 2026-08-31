@@ -108,3 +108,14 @@ jobs:
           if [ -n "$NUMBER" ]; then
             gh issue close "$NUMBER" -R "$GITHUB_REPOSITORY" --comment "CI 已恢复绿：$RUN_URL"
           fi
+
+  # 等价白名单锚点漂移检测（wop-specs D7：白名单行号随源码演进漂移须显性失败；
+  # 变异 job 为 schedule 级，PR 间防线由本 job 承担）。秒级。
+  equivalent-anchors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/check-equivalent-anchors.py

@@ -28,17 +28,21 @@
   结束时再次校验 git 干净。任何异常路径（含 Ctrl-C）都走 finally 还原。
 
 用法：
-    python3 scripts/mutation_test.py                 # 全量
-    python3 scripts/mutation_test.py --list          # 只列变异点统计
-    python3 scripts/mutation_test.py --max 30        # 冒烟
-    python3 scripts/mutation_test.py --only-op cmp-eq-neg,return-none
+    python3 scripts/mutation_test.py                          # 全量（落盘 docs/ 报告）
+    python3 scripts/mutation_test.py --list                   # 只列变异点统计
+    python3 scripts/mutation_test.py --max 30                 # 冒烟（不覆盖 docs/ 报告）
+    python3 scripts/mutation_test.py --only-op cmp-eq-neg     # 调试（不覆盖 docs/ 报告）
+    python3 scripts/mutation_test.py --min-kill-rate 95       # 门禁：低于则 exit 1（CI）
 输出：docs/mutation-report.md + docs/mutation-results.json + stdout 摘要。
+计分：击杀率 = 击杀 / (总数 − 等价体)；EQUIVALENT_MUTANTS 白名单命中者自动标注并剔除，
+白名单失配（行号漂移/已被击杀）启动告警。
 """
 import argparse
 import ast
 import collections
 import io
 import json
+import math
 import os
 import subprocess
 import sys
@@ -63,12 +67,37 @@ FALLBACK_TESTS = {
     "signature.py": ["tests/test_signature.py"],
     "canonical.py": ["tests/test_canonical.py"],
     "errors.py": ["tests/test_client.py"],
-    "sm2crypto.py": ["tests/test_envelope.py", "tests/test_interop.py"],
+    "sm2crypto.py": ["tests/test_envelope.py", "tests/test_interop.py", "tests/test_mutation_gaps.py"],
     "sm4gcm.py": ["tests/test_envelope.py", "tests/test_mutation_gaps.py"],
     "urllib_transport.py": ["tests/test_transports.py"],
-    "httpx_transport.py": ["tests/test_transports.py"],
-    "requests_transport.py": ["tests/test_transports.py"],
+    "httpx_transport.py": ["tests/test_transports.py", "tests/test_mutation_gaps.py"],
+    "requests_transport.py": ["tests/test_transports.py", "tests/test_mutation_gaps.py"],
 }
+
+# 等价变异体白名单（文件:行:算子 → 论证）：仅收录**严格不可观测**的变异体。
+# 命中者标注 EQUIVALENT 并从击杀率分母剔除（score = killed / (total − equivalent)）。
+# 纪律（PR #17 Sourcery 审查修正）：
+# - 论证是入册硬条件——无论证的条目启动即 fail（_validate_whitelist）；
+# - 概率近似（如重试上界 ±1 的 2^-2048）不是等价：csprng 可注入即可观测，
+#   此类位点必须补确定性杀测试，不得入册；
+# - 论证随白名单单一来源维护，每次全量运行自动写入报告等价体一节；
+# - 行号漂移/已被击杀/未生成时启动告警——防白名单静默腐化或滥用。
+EQUIVALENT_MUTANTS = {
+    "src/wop_sdk/encoding.py:17:str-mut":
+        "模块私有 _B64URL_INDEX 仅多一个永不查询的键：唯一消费点是对经字母表正则"
+        "校验后的字符查表（\"!\" 已被先行拒绝），且该字典不构成公共 API——严格不可观测",
+}
+
+# 教训存档（勿再犯）：
+# 1. sm2crypto.py:19 曾以「base-17 数字集包含十六进制数字 ⇒ 解析同值」入册——错在
+#    混淆「数字合法」与「位值不变」：base 17 改变每位权值，_N 增大 ≈55 倍，注入
+#    b"\\xff"*32 首采即合法。重试上界/边界测试补齐后当场击杀，告警机制拦截。
+# 2. httpx/requests 的 __enter__ 返回类型注解字符串曾以「惰性求值不可观测」入册——
+#    错在忽视注解反射：字符串写入 __annotations__ 且 get_type_hints 会解析，
+#    变异后解析即抛 NameError。已补 TestAnnotationReflection 击杀（CodeRabbit 审查）。
+# 凡「不可观测」论证必须穷举反射/内省面；拿不准就不入册、让变异体计入分母。
+
+DEFAULT_MIN_KILL_RATE = 90.0
 
 OP_CMP_EQ = "cmp-eq-neg"
 OP_CMP_BOUND = "cmp-boundary"
@@ -309,10 +338,19 @@ def git_src_dirty():
     return r.stdout.strip()
 
 
-def _assert_src_clean():
-    """安全门：src/ 工作区非净 → 拒绝启动（变异注入的前提是可原字节还原）。"""
-    if git_src_dirty():
-        sys.exit(f"[mutation] src/ 工作区非净，拒绝启动：{git_src_dirty()}")
+def _assert_src_clean(allow_dirty=False):
+    """安全门：src/ 工作区非净 → 拒绝启动（变异注入的前提是可原字节还原）。
+
+    还原正确性的真正依据是运行起点的内存字节快照（逐变异体比对）；
+    git 净区是第二道防线。--allow-dirty-src 供本地对未提交工作区跑变异
+    （如已验证过语义的未提交修复），CI 保持默认严格。
+    """
+    dirty = git_src_dirty()
+    if dirty and not allow_dirty:
+        sys.exit(f"[mutation] src/ 工作区非净，拒绝启动：{dirty}"
+                 "（确需对未提交工作区跑变异用 --allow-dirty-src）")
+    if dirty:
+        print(f"[mutation] 警告：src/ 存在未提交改动，仍按当前字节快照运行：\n{dirty}")
 
 
 def _gen_all_mutants(files):
@@ -367,18 +405,40 @@ def _snapshot_originals(files):
     return originals
 
 
+def _read_bytes(path):
+    with open(path, "rb") as fh:
+        return fh.read()
+
+
 def _run_mutants(mutants, originals):
-    """逐变异体：注入 → 只跑覆盖该行的测试 → 原字节还原校验；结束 finally 全量还原。"""
+    """逐变异体：注入 → 只跑覆盖该行的测试 → 原字节还原校验。
+
+    还原守卫（CodeRabbit 审查修正——git 状态串可被并发编辑绕过）：
+    - 注入前校验磁盘字节 == 运行起点快照；
+    - 恢复前校验磁盘字节 == 本轮写入的变异体字节；
+    - 任一不符 = 文件被外部改动：保留现场、绝不覆盖、立即 exit 2；
+    - 终态按逐文件字节校验（不再依赖 git status 字符串比较）。
+    """
     results = []
     t0 = time.time()
+    written = {}  # file → 本工具最后一次写入的字节（守卫基准）
+    preserved = []  # 被外部改动、已保留现场未覆盖的文件
+
+    def guard_fail(path, phase):
+        print(f"[mutation] 守卫触发（{phase}）：{path} 在运行期间被外部改动，"
+              f"保留现场、绝不覆盖；请人工核对该文件", flush=True)
+        raise SystemExit(2)
+
     try:
         for idx, m in enumerate(mutants, 1):
             target = os.path.join(ROOT, m["file"])
-            with open(target, "rb") as fh:
-                cur = fh.read()
+            if _read_bytes(target) != originals[target]:
+                guard_fail(target, "注入前")
+            cur = originals[target]
             mutated = cur[: m["start"]] + m["repl"].encode("utf-8") + cur[m["end"]:]
             with open(target, "wb") as fh:
                 fh.write(mutated)
+            written[target] = mutated
             tests = m["tests"][:MAX_TESTS_PER_MUTANT]  # 空列表 → pytest 无参全量兜底（防误判 SURVIVED）
             try:
                 r = subprocess.run(
@@ -392,10 +452,12 @@ def _run_mutants(mutants, originals):
             except subprocess.TimeoutExpired:
                 status = "KILLED"
             finally:
+                if _read_bytes(target) != mutated:
+                    guard_fail(target, "恢复前")
                 with open(target, "wb") as fh:
                     fh.write(originals[target])
-                with open(target, "rb") as fh:
-                    assert fh.read() == originals[target], f"还原失败 {target}"
+                written[target] = originals[target]
+                assert _read_bytes(target) == originals[target], f"还原失败 {target}"
             m2 = dict(m)
             m2["status"] = status
             m2.pop("tests", None)
@@ -406,71 +468,132 @@ def _run_mutants(mutants, originals):
                 print("  [%d/%d] 击杀 %d（%.1f%%）elapsed %.0fs" % (
                     idx, len(mutants), killed, 100.0 * killed / idx, time.time() - t0), flush=True)
     finally:
+        # 终态守卫：只覆盖「当前字节 == 本工具最后一次写入」的文件；
+        # 被外部改动过的文件保留现场（guard_fail 已列名），绝不覆盖。
         for f, data in originals.items():
-            with open(f, "wb") as fh:
-                fh.write(data)
-        dirty = git_src_dirty()
-        print(f'[mutation] 还原完成；src/ {f"仍脏！！{dirty}" if dirty else "干净"}')
-        if dirty:
-            sys.exit(1)
+            if f in preserved:
+                continue
+            now = _read_bytes(f)
+            if now == data:
+                continue
+            if written.get(f) == now:
+                with open(f, "wb") as fh:
+                    fh.write(data)
+            else:
+                preserved.append(f)
+        if preserved:
+            print(f"[mutation] 终态守卫：以下文件被外部改动，已保留现场未还原：{preserved}", flush=True)
+            raise SystemExit(2)
+        print("[mutation] 还原完成；src/ 与运行起点逐文件字节一致")
     return results
 
 
-def _write_results_json(results, excluded, killed, survived, kill_rate):
+def _write_results_json(results, excluded, killed, survived, kill_rate, equivalents=None, matched=None):
     """写 docs/mutation-results.json（机器可读结果）。"""
     os.makedirs(os.path.join(ROOT, "docs"), exist_ok=True)
+    equivalents = equivalents or []
     with open(os.path.join(ROOT, "docs", "mutation-results.json"), "w", encoding="utf-8") as f:
         json.dump({"kill_rate": kill_rate, "killed": len(killed), "survived": len(survived),
+                   "equivalent": len(equivalents),
+                   "score_base": len(results) - len(equivalents),
                    "total": len(results), "excluded_no_coverage": len(excluded),
+                   "whitelist_matched": sorted(matched or ()),
                    "results": results}, f, ensure_ascii=False, indent=1)
 
 
-def _write_report_md(results, excluded, killed, survived, kill_rate):
-    """写 docs/mutation-report.md（按算子击杀率 + 存活变异体清单）。"""
-    op_stat = collections.defaultdict(lambda: [0, 0])  # op -> [killed, total]
+def _report_row(x):
+    snippet = f'{x["orig"][:40]} → {x["repl"][:40]}'.replace("|", "\\|").replace("\n", " ")
+    return "| %s:%d | %s | `%s` |" % (x["file"], x["row"], x["op"], snippet)
+
+
+def _write_report_md(results, excluded, killed, survived, kill_rate, equivalents=None):
+    """写 docs/mutation-report.md（按算子击杀率 + 存活/等价变异体清单）。"""
+    equivalents = equivalents or []
+    op_stat = collections.defaultdict(lambda: [0, 0])  # op -> [killed, scored]
     for x in results:
+        if x["status"] == "EQUIVALENT":
+            continue  # 等价体不参与算子击杀率
         op_stat[x["op"]][1] += 1
         if x["status"] == "KILLED":
             op_stat[x["op"]][0] += 1
 
+    score_base = len(results) - len(equivalents)
     lines = [
         "# 变异测试报告（wop-python-sdk）",
         "",
         "- 工具：`scripts/mutation_test.py`（自研 token 级变异器，PIT 不适用 Python）",
         f'- 生成：{time.strftime("%Y-%m-%d %H:%M:%S")}',
-        "- 变异体：%d（击杀 %d / 存活 %d，另有 %d 个无覆盖行变异点被排除）"
-        % (len(results), len(killed), len(survived), len(excluded)),
-        "- **击杀率：%.2f%%**（目标 ≥90%%）" % kill_rate,
+        "- 变异体：%d（击杀 %d / 存活 %d / 等价（白名单）%d，另有 %d 个无覆盖行变异点被排除）"
+        % (len(results), len(killed), len(survived), len(equivalents), len(excluded)),
+        "- **击杀率：%.2f%%**（= 击杀 %d / 计分基数 %d；等价体已从分母剔除）"
+        % (kill_rate, len(killed), score_base),
         "",
-        "## 按算子",
+        "## 按算子（等价体不计入）",
         "",
-        "| 算子 | 击杀/总数 | 击杀率 |",
+        "| 算子 | 击杀/计分 | 击杀率 |",
         "|---|---|---|",
     ]
     for op in ALL_OPS:
         k, t = op_stat.get(op, [0, 0])
         if t:
             lines.append("| %s | %d/%d | %.1f%% |" % (op, k, t, 100.0 * k / t))
+    if equivalents:
+        lines += ["", "## 等价变异体（%d，白名单自动标注，论证随单一来源生成）" % len(equivalents), "",
+                  "| 文件:行 | 算子 | 原文 → 变异 | 论证 |", "|---|---|---|---|"]
+        for x in equivalents:
+            key = f'{x["file"]}:{x["row"]}:{x["op"]}'
+            rationale = EQUIVALENT_MUTANTS.get(key, "（缺失——告警已列）")
+            lines.append(_report_row(x).rstrip(" |") + " | " + rationale.replace("|", "\\|") + " |")
     if survived:
-        lines += ["", "## 存活变异体（%d）" % len(survived), "",
+        lines += ["", "## 存活变异体（%d，需逐条归因：等价论证或补杀测试）" % len(survived), "",
                   "| 文件:行 | 算子 | 原文 → 变异 |", "|---|---|---|"]
-        for x in survived:
-            snippet = f'{x["orig"][:40]} → {x["repl"][:40]}'.replace(
-                "|", "\\|"
-            ).replace("\n", " ")
-            lines.append("| %s:%d | %s | `%s` |" % (x["file"], x["row"], x["op"], snippet))
+        lines.extend(_report_row(x) for x in survived)
     with open(os.path.join(ROOT, "docs", "mutation-report.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
+
+
+def _annotate_equivalents(results):
+    """白名单命中者 SURVIVED → EQUIVALENT；返回（白名单命中集, 异常命中集）。
+
+    异常命中 = 白名单条目本轮不存在（行号漂移/源码重构）或已被击杀（不再是等价体）。
+    """
+    matched, anomalies = set(), []
+    generated = {f'{x["file"]}:{x["row"]}:{x["op"]}': x for x in results}
+    for key, x in generated.items():
+        if key in EQUIVALENT_MUTANTS:
+            matched.add(key)
+            if x["status"] == "KILLED":
+                anomalies.append(("已击杀，应移出白名单", key))
+            elif x["status"] == "SURVIVED":
+                x["status"] = "EQUIVALENT"
+    for key in sorted(EQUIVALENT_MUTANTS.keys() - matched):
+        anomalies.append(("本轮未生成（行号漂移或位点消失）", key))
+    return matched, anomalies
+
+
+
+def _validate_whitelist():
+    """入册硬条件：每条白名单必须携带非空论证（PR #17 Sourcery 评论 2 修正）。"""
+    missing = [k for k, v in EQUIVALENT_MUTANTS.items() if not (v or "").strip()]
+    if missing:
+        sys.exit("[mutation] 白名单条目无论证，拒绝运行：%s" % ", ".join(missing))
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true", help="只列变异点统计")
-    ap.add_argument("--max", type=int, default=0, help="最多执行 N 个变异体（冒烟）")
-    ap.add_argument("--only-op", default="", help="逗号分隔算子过滤")
+    ap.add_argument("--max", type=int, default=0, help="最多执行 N 个变异体（冒烟；不落盘报告）")
+    ap.add_argument("--only-op", default="", help="逗号分隔算子过滤（调试；不落盘报告）")
+    ap.add_argument("--min-kill-rate", type=float, default=DEFAULT_MIN_KILL_RATE,
+                    help="击杀率门禁（%%，等价体剔除后计）；低于则 exit 1（CI 用）")
+    ap.add_argument("--allow-dirty-src", action="store_true",
+                    help="允许 src/ 有未提交改动（按当前字节快照变异并还原；CI 勿用）")
     args = ap.parse_args()
+    if not math.isfinite(args.min_kill_rate) or not 0 <= args.min_kill_rate <= 100:
+        sys.exit("[mutation] --min-kill-rate 必须为 [0,100] 内有限数，实际 %r" % args.min_kill_rate)
 
-    _assert_src_clean()
+    _assert_src_clean(allow_dirty=args.allow_dirty_src)
+    _validate_whitelist()
 
     files = collect_target_files()
     all_mutants = _gen_all_mutants(files)
@@ -485,16 +608,30 @@ def main():
 
     originals = _snapshot_originals(files)
     results = _run_mutants(mutants, originals)
+    matched, anomalies = _annotate_equivalents(results)
+    for kind, key in anomalies:
+        print("[mutation] 白名单告警：%s：%s" % (kind, key))
 
     killed = [x for x in results if x["status"] == "KILLED"]
     survived = [x for x in results if x["status"] == "SURVIVED"]
-    kill_rate = 100.0 * len(killed) / len(results) if results else 0.0
-    _write_results_json(results, excluded, killed, survived, kill_rate)
-    _write_report_md(results, excluded, killed, survived, kill_rate)
+    equivalents = [x for x in results if x["status"] == "EQUIVALENT"]
+    score_base = len(results) - len(equivalents)
+    kill_rate = 100.0 * len(killed) / score_base if score_base else 0.0
 
-    print("[mutation] 完成：击杀率 %.2f%%（%d/%d），存活 %d → docs/mutation-report.md"
-          % (kill_rate, len(killed), len(results), len(survived)))
+    partial = bool(args.max or args.only_op)
+    if partial:
+        print("[mutation] 部分运行（--max/--only-op）：不覆盖 docs/ 报告")
+    else:
+        _write_results_json(results, excluded, killed, survived, kill_rate,
+                            equivalents=equivalents, matched=matched)
+        _write_report_md(results, excluded, killed, survived, kill_rate,
+                         equivalents=equivalents)
 
+    verdict = "达标" if kill_rate >= args.min_kill_rate else "低于门禁 %.1f%%" % args.min_kill_rate
+    print("[mutation] 完成：击杀率 %.2f%%（%d/%d，等价体 %d 已剔除），存活 %d —— %s"
+          % (kill_rate, len(killed), score_base, len(equivalents), len(survived), verdict))
+    if kill_rate < args.min_kill_rate:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
