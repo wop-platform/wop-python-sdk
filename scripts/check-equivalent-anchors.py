@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """等价白名单锚点漂移检测（六仓统一模式，wop-python-sdk 实例）。
 
-白名单（scripts/mutation_test.py EQUIVALENT_MUTANTS，5 条已论证）仅在变异
-运行时做失配告警，而 mutation job 为 schedule/dispatch 级——PR 间漂移不可见。
+白名单（scripts/mutation_test.py EQUIVALENT_MUTANTS，已论证条目随审查增删）
+仅在变异运行时做失配告警，而 mutation job 为 schedule/dispatch 级——PR 间漂移不可见。
 本脚本在每 PR 上独立校验两层：
   1. 白名单 (文件, 行, 算子) 与锚快照 tests/equivalent-anchors.txt 一致；
   2. 锚快照的源码行前缀与当前源码一致。

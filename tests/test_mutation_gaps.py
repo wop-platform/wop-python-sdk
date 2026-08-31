@@ -18,6 +18,7 @@ import base64
 from dataclasses import FrozenInstanceError
 
 import pytest
+from typing import get_type_hints
 
 from wop_sdk.client import WopConfig
 from wop_sdk.errors import DecryptError, KeyMaterialError
@@ -105,3 +106,19 @@ class TestSm2EncryptRetryCeiling:
     def test_retry_then_success(self, enc_ops):  # 重试语义：越界后有效采样必须恢复
         out = sm2_encrypt(enc_ops, self._csprng(3), b"payload")
         assert out[0] == 0x04 and len(out) == 65 + 32 + len(b"payload")
+
+
+class TestAnnotationReflection:
+    """注解字符串写入 __annotations__ 且可被 get_type_hints 解析。
+
+    原先以「惰性求值不可观测」将 __enter__ 返回类型注解入册等价被证伪
+    （PR #17 CodeRabbit 审查）：变异为 "HttpxTransport!" 后 get_type_hints
+    即抛 NameError——公共 API 反射面是可观测契约。本测试击杀该对变异体。
+    """
+
+    def test_enter_return_annotations_resolve(self):  # spec:mutation-kill 注解反射
+        from wop_sdk.transports.httpx_transport import HttpxTransport
+        from wop_sdk.transports.requests_transport import RequestsTransport
+
+        assert get_type_hints(HttpxTransport.__enter__)["return"] is HttpxTransport
+        assert get_type_hints(RequestsTransport.__enter__)["return"] is RequestsTransport

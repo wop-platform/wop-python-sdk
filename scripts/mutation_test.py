@@ -42,6 +42,7 @@ import ast
 import collections
 import io
 import json
+import math
 import os
 import subprocess
 import sys
@@ -69,8 +70,8 @@ FALLBACK_TESTS = {
     "sm2crypto.py": ["tests/test_envelope.py", "tests/test_interop.py", "tests/test_mutation_gaps.py"],
     "sm4gcm.py": ["tests/test_envelope.py", "tests/test_mutation_gaps.py"],
     "urllib_transport.py": ["tests/test_transports.py"],
-    "httpx_transport.py": ["tests/test_transports.py"],
-    "requests_transport.py": ["tests/test_transports.py"],
+    "httpx_transport.py": ["tests/test_transports.py", "tests/test_mutation_gaps.py"],
+    "requests_transport.py": ["tests/test_transports.py", "tests/test_mutation_gaps.py"],
 }
 
 # 等价变异体白名单（文件:行:算子 → 论证）：仅收录**严格不可观测**的变异体。
@@ -83,17 +84,18 @@ FALLBACK_TESTS = {
 # - 行号漂移/已被击杀/未生成时启动告警——防白名单静默腐化或滥用。
 EQUIVALENT_MUTANTS = {
     "src/wop_sdk/encoding.py:17:str-mut":
-        "字母表字符串尾部追加 → _B64URL_INDEX 仅多一个永不查询的键，"
-        "且字母表正则先于查表拒绝非 base64url 字符，行为不可观测",
-    "src/wop_sdk/transports/httpx_transport.py:40:str-mut":
-        "def __enter__(self) -> \"HttpxTransport\"：惰性求值返回类型注解字符串，运行时不可观测",
-    "src/wop_sdk/transports/requests_transport.py:43:str-mut":
-        "同上（\"RequestsTransport\" 注解字符串）",
+        "模块私有 _B64URL_INDEX 仅多一个永不查询的键：唯一消费点是对经字母表正则"
+        "校验后的字符查表（\"!\" 已被先行拒绝），且该字典不构成公共 API——严格不可观测",
 }
 
-# 教训存档（勿再犯）：sm2crypto.py:19 曾以「base-17 数字集包含十六进制数字 ⇒ 解析同值」
-# 入册——错在混淆「数字合法」与「位值不变」：base 17 改变每位权值，_N 增大 ≈55 倍，
-# 注入 b"\xff"*32 首采即合法。重试上界/边界测试补齐后当场击杀，告警机制拦截。
+# 教训存档（勿再犯）：
+# 1. sm2crypto.py:19 曾以「base-17 数字集包含十六进制数字 ⇒ 解析同值」入册——错在
+#    混淆「数字合法」与「位值不变」：base 17 改变每位权值，_N 增大 ≈55 倍，注入
+#    b"\\xff"*32 首采即合法。重试上界/边界测试补齐后当场击杀，告警机制拦截。
+# 2. httpx/requests 的 __enter__ 返回类型注解字符串曾以「惰性求值不可观测」入册——
+#    错在忽视注解反射：字符串写入 __annotations__ 且 get_type_hints 会解析，
+#    变异后解析即抛 NameError。已补 TestAnnotationReflection 击杀（CodeRabbit 审查）。
+# 凡「不可观测」论证必须穷举反射/内省面；拿不准就不入册、让变异体计入分母。
 
 DEFAULT_MIN_KILL_RATE = 90.0
 
@@ -403,18 +405,40 @@ def _snapshot_originals(files):
     return originals
 
 
-def _run_mutants(mutants, originals, pre_dirty=None):
-    """逐变异体：注入 → 只跑覆盖该行的测试 → 原字节还原校验；结束 finally 全量还原。"""
+def _read_bytes(path):
+    with open(path, "rb") as fh:
+        return fh.read()
+
+
+def _run_mutants(mutants, originals):
+    """逐变异体：注入 → 只跑覆盖该行的测试 → 原字节还原校验。
+
+    还原守卫（CodeRabbit 审查修正——git 状态串可被并发编辑绕过）：
+    - 注入前校验磁盘字节 == 运行起点快照；
+    - 恢复前校验磁盘字节 == 本轮写入的变异体字节；
+    - 任一不符 = 文件被外部改动：保留现场、绝不覆盖、立即 exit 2；
+    - 终态按逐文件字节校验（不再依赖 git status 字符串比较）。
+    """
     results = []
     t0 = time.time()
+    written = {}  # file → 本工具最后一次写入的字节（守卫基准）
+    preserved = []  # 被外部改动、已保留现场未覆盖的文件
+
+    def guard_fail(path, phase):
+        print(f"[mutation] 守卫触发（{phase}）：{path} 在运行期间被外部改动，"
+              f"保留现场、绝不覆盖；请人工核对该文件", flush=True)
+        raise SystemExit(2)
+
     try:
         for idx, m in enumerate(mutants, 1):
             target = os.path.join(ROOT, m["file"])
-            with open(target, "rb") as fh:
-                cur = fh.read()
+            if _read_bytes(target) != originals[target]:
+                guard_fail(target, "注入前")
+            cur = originals[target]
             mutated = cur[: m["start"]] + m["repl"].encode("utf-8") + cur[m["end"]:]
             with open(target, "wb") as fh:
                 fh.write(mutated)
+            written[target] = mutated
             tests = m["tests"][:MAX_TESTS_PER_MUTANT]  # 空列表 → pytest 无参全量兜底（防误判 SURVIVED）
             try:
                 r = subprocess.run(
@@ -428,10 +452,12 @@ def _run_mutants(mutants, originals, pre_dirty=None):
             except subprocess.TimeoutExpired:
                 status = "KILLED"
             finally:
+                if _read_bytes(target) != mutated:
+                    guard_fail(target, "恢复前")
                 with open(target, "wb") as fh:
                     fh.write(originals[target])
-                with open(target, "rb") as fh:
-                    assert fh.read() == originals[target], f"还原失败 {target}"
+                written[target] = originals[target]
+                assert _read_bytes(target) == originals[target], f"还原失败 {target}"
             m2 = dict(m)
             m2["status"] = status
             m2.pop("tests", None)
@@ -442,14 +468,23 @@ def _run_mutants(mutants, originals, pre_dirty=None):
                 print("  [%d/%d] 击杀 %d（%.1f%%）elapsed %.0fs" % (
                     idx, len(mutants), killed, 100.0 * killed / idx, time.time() - t0), flush=True)
     finally:
+        # 终态守卫：只覆盖「当前字节 == 本工具最后一次写入」的文件；
+        # 被外部改动过的文件保留现场（guard_fail 已列名），绝不覆盖。
         for f, data in originals.items():
-            with open(f, "wb") as fh:
-                fh.write(data)
-        dirty = git_src_dirty()
-        restored_ok = dirty == pre_dirty  # 与运行前脏态一致 = 字节快照还原成功
-        print(f'[mutation] 还原完成；src/ {"与运行前一致" if restored_ok else f"意外漂移！！{dirty}"}')
-        if not restored_ok:
-            sys.exit(1)
+            if f in preserved:
+                continue
+            now = _read_bytes(f)
+            if now == data:
+                continue
+            if written.get(f) == now:
+                with open(f, "wb") as fh:
+                    fh.write(data)
+            else:
+                preserved.append(f)
+        if preserved:
+            print(f"[mutation] 终态守卫：以下文件被外部改动，已保留现场未还原：{preserved}", flush=True)
+            raise SystemExit(2)
+        print("[mutation] 还原完成；src/ 与运行起点逐文件字节一致")
     return results
 
 
@@ -554,6 +589,8 @@ def main():
     ap.add_argument("--allow-dirty-src", action="store_true",
                     help="允许 src/ 有未提交改动（按当前字节快照变异并还原；CI 勿用）")
     args = ap.parse_args()
+    if not math.isfinite(args.min_kill_rate) or not 0 <= args.min_kill_rate <= 100:
+        sys.exit("[mutation] --min-kill-rate 必须为 [0,100] 内有限数，实际 %r" % args.min_kill_rate)
 
     _assert_src_clean(allow_dirty=args.allow_dirty_src)
     _validate_whitelist()
@@ -570,7 +607,7 @@ def main():
         mutants = mutants[: args.max]
 
     originals = _snapshot_originals(files)
-    results = _run_mutants(mutants, originals, pre_dirty=git_src_dirty())
+    results = _run_mutants(mutants, originals)
     matched, anomalies = _annotate_equivalents(results)
     for kind, key in anomalies:
         print("[mutation] 白名单告警：%s：%s" % (kind, key))

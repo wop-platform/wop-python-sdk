@@ -1,16 +1,13 @@
 {
  "kill_rate": 100.0,
- "killed": 862,
+ "killed": 864,
  "survived": 0,
- "equivalent": 3,
- "score_base": 862,
+ "equivalent": 1,
+ "score_base": 864,
  "total": 865,
  "excluded_no_coverage": 4,
  "whitelist_matched": [
-  "src/wop_sdk/encoding.py:17:str-mut",
-  "src/wop_sdk/sm2crypto.py:19:num-inc",
-  "src/wop_sdk/transports/httpx_transport.py:40:str-mut",
-  "src/wop_sdk/transports/requests_transport.py:43:str-mut"
+  "src/wop_sdk/encoding.py:17:str-mut"
  ],
  "results": [
   {
@@ -9415,8 +9412,8 @@
    "end": 1391,
    "orig": "\"HttpxTransport\"",
    "repl": "\"HttpxTransport!\"",
-   "status": "EQUIVALENT",
-   "n_tests": 1
+   "status": "KILLED",
+   "n_tests": 2
   },
   {
    "file": "src/wop_sdk/transports/httpx_transport.py",
@@ -9481,8 +9478,8 @@
    "end": 1469,
    "orig": "\"RequestsTransport\"",
    "repl": "\"RequestsTransport!\"",
-   "status": "EQUIVALENT",
-   "n_tests": 1
+   "status": "KILLED",
+   "n_tests": 2
   },
   {
    "file": "src/wop_sdk/transports/requests_transport.py",
