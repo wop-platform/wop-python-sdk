@@ -34,7 +34,7 @@ from .keys import (
     load_sm2_public_key,
 )
 from .signature import sign, verify
-from .sm2crypto import Sm2Ops, sm2_derive_public_hex
+from .sm2crypto import PLATFORM_INBOUND_USER_ID, Sm2Ops, sm2_derive_public_hex
 from .suites import Suite, parse_suite
 
 Csprng = Callable[[int], bytes]
@@ -108,8 +108,10 @@ class WopClient:
                 user_id=config.app_key,
             )
             platform_pub = load_sm2_public_key(config.platform_public_key)
+            # spec:D15 入向验签 ZA userId = 平台固定值（非商户 appKey；D14 的 appKey 仅限
+            # 出向签名者 _signer）。L2 出向加密不走 _sm3_z，user_id 对 seal_l2 无影响。
             self._wrap_pub = Sm2Ops(
-                public_xy_hex=platform_pub.xy_hex, user_id=config.app_key
+                public_xy_hex=platform_pub.xy_hex, user_id=PLATFORM_INBOUND_USER_ID
             )
         self._csprng = csprng
 

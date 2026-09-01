@@ -141,9 +141,9 @@ def _platform_l2_sm2(vec, path, plaintext):
     h["x-wop-content-digest"] = f"sm3 {_sm3.sm3_hash(list(wire))}"
     h["x-wop-encrypt"] = f"L2;dek={_b64u(wrapped)}"
     canonical = _independent_canonical(h, "POST", path)
-    # D14：平台按商户出向 appKey（= x-wop-appkey 值）计算 ZA userId 签名——
+    # spec:D15 平台按平台固定 ZA userId 签名（入向身份；D14 的 appKey 仅限商户出向签名）——
     # 独立手拼 ENTL‖ID‖a‖b‖g‖pub（不经 wop_sdk.sm2crypto 包装，D5 纪律不变）
-    uid = b"app_sm_001"  # 与商户端 _sm_client app_key 同源
+    uid = b"1234567812345678"
     entl = format(len(uid) * 8, "04x")
     z = entl + uid.hex() + g.ecc_table["a"] + g.ecc_table["b"] + g.ecc_table["g"] + g.public_key
     za = _sm3.sm3_hash(list(bytes.fromhex(z)))

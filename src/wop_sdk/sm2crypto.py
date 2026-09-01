@@ -9,7 +9,8 @@
 3. gmssl ``encrypt``/``random_hex`` 使用 ``random.choice``（非 CSPRNG）——本模块的 k
    一律由调用方注入（生产走 csprng，测试走固定向量，I4）。
 4. gmssl ``_sm3_z`` 硬编码 userId='1234567812345678'（'0080'+'3132…'）——本类覆写为
-   按构造参数 ``user_id`` 计算（D14：ZA userId = 出向 x-wop-appkey 值，禁静默回退默认）。
+   按构造参数 ``user_id`` 计算（D14 出向：ZA userId = x-wop-appkey 值；D15 入向：平台固定值
+   ``PLATFORM_INBOUND_USER_ID``；两向均禁静默回退 gmssl 默认）。
 """
 import binascii
 from typing import Optional, cast
@@ -27,12 +28,16 @@ _B = int(default_ecc_table["b"], 16)
 
 _MAX_K_RETRY = 256
 
+# spec:D15 入向验签 ZA userId = 平台固定值（出向签名身份见 D14：x-wop-appkey 值）
+PLATFORM_INBOUND_USER_ID = "1234567812345678"
+
 
 class Sm2Ops(CryptSM2):
     """SM2 曲线运算封装（无可变共享状态）。
 
-    ``user_id`` 为 ZA 计算的 ID（GM/T 0003.2）——D14 钉死为出向 x-wop-appkey 值
-    （= config.appKey 序列化结果）；None 表示未配置，签名/验签时抛 KeyMaterialError，
+    ``user_id`` 为 ZA 计算的 ID（GM/T 0003.2）——方向语义分离（spec:D15）：出向签名取
+    D14 x-wop-appkey 值（= config.appKey），入向验签取 D15 平台固定值
+    ``PLATFORM_INBOUND_USER_ID``。None 表示未配置，签名/验签时抛 KeyMaterialError，
     禁止回退 gmssl 硬编码默认。
     """
 
@@ -52,14 +57,16 @@ class Sm2Ops(CryptSM2):
         if private_key_hex is not None:
             self.private_key = private_key_hex
     def _sm3_z(self, data: bytes) -> str:
-        """ZA = SM3(ENTL‖ID‖a‖b‖xG‖yG‖xA‖yA)（GM/T 0003.2，D14）。
+        """ZA = SM3(ENTL‖ID‖a‖b‖xG‖yG‖xA‖yA)（GM/T 0003.2；D14 出向/D15 入向）。
 
         gmssl 原生实现将 ID 硬编码为 '1234567812345678'（'0080'+'3132…' hex）；
         本覆写按 ``self._user_id`` 计算 ENTL 与 ID 段，缺失即抛 KeyMaterialError
         （configuration 类，禁止静默回退默认值）。
         """
         if not self._user_id:
-            raise KeyMaterialError("SM2 签名/验签必须显式指定 userId（D14：取 config.appKey）")
+            raise KeyMaterialError(
+                "SM2 签名/验签必须显式指定 userId（D14 出向：config.appKey；D15 入向：平台固定值）"
+            )
         uid = self._user_id.encode("utf-8")
         entl = format(len(uid) * 8, "04x")  # 2 字节大端 ID 比特长度 hex；'0080' = 128bit 特例
         z = (
@@ -90,7 +97,7 @@ def sm2_sign_with_sm3(ops: Sm2Ops, data: bytes, k_hex: str) -> bytes:
 
 
 def sm2_verify_with_sm3(ops: Sm2Ops, sig_hex: str, data: bytes) -> bool:
-    """SM3withSM2 验签（裸 r‖s hex）。"""
+    """SM3withSM2 验签（裸 r‖s hex）；入向调用方 ops 的 user_id 须为 D15 平台固定值。"""
     return bool(ops.verify_with_sm3(sig_hex, data))
 
 

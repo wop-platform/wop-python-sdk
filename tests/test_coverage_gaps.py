@@ -52,7 +52,7 @@ def sm2_pair(vec_keys, vectors):
     k = vec_keys["sm2"]
     pub = load_sm2_public_key(k["publicPointB64"])
     d = load_sm2_private_key(k["privateDB64"])
-    # 验签路径需显式注入黄金向量 sm2UserId（D14：向量固定值仅作夹具，禁回退 gmssl 默认）
+    # 算法级对称用例：uid 取黄金向量 sm2UserId（数值恰为 D15 平台固定值；方向语义在 client 层钉死）
     uid = vectors["inputs"]["sm2UserId"]
     return (
         Sm2Ops(public_xy_hex=pub.xy_hex, user_id=uid),
@@ -262,3 +262,64 @@ class TestErrorCategories:  # spec:2.2 category 闭集与 I7 文案纪律
         with pytest.raises(ConfigurationError) as exc:
             WopClient(WopConfig("  ", "WOP-RSA3072-SHA256", k["privatePkcs8B64"], k["publicSpkiB64"]))
         assert exc.value.category == "configuration"
+
+
+class TestSm2InboundZaUserId:  # spec:D15 入向验签 ZA userId = 平台固定值
+    """D15 条款 → 测试反向核对矩阵：
+    - 正向：平台按固定 userId 1234567812345678 签名 → verify_response 通过
+      （商户 appKey 与固定值不同，证明入向身份与 appKey 解耦）
+    - 否定式：平台误按商户 appKey（D14 出向值）作 ZA userId 签名 → 验签拒绝
+    平台侧独立构造（D5：手拼 canonical/ZA，不经 wop_sdk 出向路径）。"""
+
+    APP_KEY = "app_sm_001"  # 与平台固定值不同的商户 appKey
+
+    @staticmethod
+    def _platform_l0(vec_keys, uid: bytes):
+        import base64 as _b64
+        from urllib.parse import quote
+
+        from gmssl import sm3 as _sm3
+        from gmssl.sm2 import CryptSM2
+
+        d = _b64.b64decode(vec_keys["sm2"]["privateDB64"])
+        g = CryptSM2(d.hex(), "00" * 128)
+        g.public_key = g._kg(int.from_bytes(d, "big"), g.ecc_table["g"])
+        body = b'{"code":0}'
+        h = {
+            "x-wop-appkey": "app_10012481831",
+            "x-wop-timestamp": "1750000000000",
+            "x-wop-nonce": "ab" * 16,
+            "x-wop-content-digest": f"sm3 {_sm3.sm3_hash(list(body))}",
+        }
+        q = lambda s: quote(s, safe=".*-")  # noqa: E731（F2 Java URLEncoder 语义）
+        lines = "\n".join(f"{q(k)}:{q(v)}" for k, v in sorted(h.items()))
+        canonical = "\n".join(["v1/1800", "POST", "/res", "", lines]).encode("utf-8")
+        entl = format(len(uid) * 8, "04x")
+        z = entl + uid.hex() + g.ecc_table["a"] + g.ecc_table["b"] + g.ecc_table["g"] + g.public_key
+        za = _sm3.sm3_hash(list(bytes.fromhex(z)))
+        e_hex = _sm3.sm3_hash(list(bytes.fromhex(za + canonical.hex())))
+        sig = g.sign(bytes.fromhex(e_hex), "%064x" % int.from_bytes(b"\x88" * 32, "big"))
+        h["x-wop-sign"] = f'WOP-SM2-SM3 v1/1800/{";".join(sorted(h))}/{b64url_encode(bytes.fromhex(sig))}'
+        return h, body
+
+    def _client(self, vec_keys):
+        return WopClient(
+            WopConfig(
+                app_key=self.APP_KEY,
+                suite="WOP-SM2-SM3",
+                merchant_private_key=vec_keys["sm2"]["privateDB64"],
+                platform_public_key=vec_keys["sm2"]["publicPointB64"],
+            )
+        )
+
+    def test_platform_fixed_uid_verifies(self, vec_keys):  # spec:D15 正向
+        h, body = self._platform_l0(vec_keys, b"1234567812345678")
+        result = self._client(vec_keys).verify_response(h, body, "/res")
+        assert result.ok, result.reason
+        assert result.plaintext == body
+
+    def test_appkey_uid_rejected(self, vec_keys):  # spec:D15 否定式
+        # 平台若误用商户 appKey 作 ZA userId（D14 出向值）→ 入向验签必须拒绝
+        h, body = self._platform_l0(vec_keys, self.APP_KEY.encode())
+        result = self._client(vec_keys).verify_response(h, body, "/res")
+        assert not result.ok

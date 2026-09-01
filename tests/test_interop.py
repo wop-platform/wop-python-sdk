@@ -129,8 +129,8 @@ def _wire_bytes(b64u: str) -> bytes:
 def _interop_client(vec_keys, suite: str, csprng=None, app_key: str = "app_interop_001") -> WopClient:
     """按套件从黄金向量取密钥构造客户端（与 crypto-vectors.json 同源，镜像 Go interopClient）。
 
-    app_key：build 用例为 'app_interop_001'（x-wop-appkey 头比对）；SM2 verify 用例须显式
-    注入向量夹具 sm2UserId（fixture 平台响应签名按该 userId 生成，D14：向量固定值仅作夹具）。
+    app_key：build/verify 用例统一为 'app_interop_001'（spec:D15 入向验签 ZA userId = 平台
+    固定值，与商户 app_key 解耦；fixture 平台响应按向量 sm2UserId=平台固定值签名）。
     """
     if suite == "WOP-RSA4096-SHA256":
         merchant = vec_keys["rsa4096"]["privatePkcs8B64"]
@@ -231,15 +231,14 @@ class TestInteropConformanceVerify:  # spec:interop-v1 消费要求 3
     混合大小写头名（p13，P7）由 verify_response 的小写化兜底覆盖。"""
 
     @pytest.fixture(scope="class")
-    def clients(self, vec_keys, vectors):
+    def clients(self, vec_keys):
         cache = {}
-        sm2_uid = vectors["inputs"]["sm2UserId"]
 
         def _client(suite):
             if suite not in cache:
-                # spec:D14 SM2 verify：fixture 平台签名按向量 sm2UserId 生成，验签端 app_key 须同源
-                app_key = sm2_uid if suite == "WOP-SM2-SM3" else "app_interop_001"
-                cache[suite] = _interop_client(vec_keys, suite, app_key=app_key)
+                # spec:D15 入向验签 ZA userId = 平台固定值，与商户 app_key 解耦（含 SM2 套件，
+                # 不再借 app_key=sm2UserId 同源技巧掩盖入向身份耦合）
+                cache[suite] = _interop_client(vec_keys, suite)
             return cache[suite]
 
         return _client

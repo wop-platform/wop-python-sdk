@@ -14,6 +14,7 @@ from wop_sdk.encoding import b64url_encode
 from wop_sdk.errors import ConfigurationError
 from wop_sdk.envelope import seal_l2
 from wop_sdk.signature import sign
+from wop_sdk.sm2crypto import PLATFORM_INBOUND_USER_ID, Sm2Ops
 
 RSA_REQ = "WOP-RSA3072-SHA256"
 SM_REQ = "WOP-SM2-SM3"
@@ -57,7 +58,8 @@ def _freeze_time(monkeypatch):
 
 
 def platform_l2_response(client, path, plaintext, encrypt_override=None):
-    """组装模拟平台的 L2 响应（复用 client 密钥对，自包自签）。
+    """组装模拟平台的 L2 响应（复用 client 密钥对；spec:D15 平台响应按平台固定
+    ZA userId 签名，非商户 appKey——密钥对同源仅为测试便利，身份按方向区分）。
 
     encrypt_override：以有效签名携带被篡改的 x-wop-encrypt 头（白盒 F6 顺序测试）。
     """
@@ -73,7 +75,16 @@ def platform_l2_response(client, path, plaintext, encrypt_override=None):
     }
     auth = "v1/1800"
     canonical = build_canonical(auth, "POST", path, "", canonical_headers(headers))
-    sig = sign(client._suite, client._signer, canonical.encode("utf-8"), csprng=client._csprng)
+    # spec:D15 SM2 平台响应以平台固定 ZA userId 签名；RSA 无 ZA 概念仍用商户签名者
+    if isinstance(client._signer, Sm2Ops):
+        signer = Sm2Ops(
+            private_key_hex=client._signer.private_key,
+            public_xy_hex=client._signer.public_key,
+            user_id=PLATFORM_INBOUND_USER_ID,
+        )
+    else:
+        signer = client._signer
+    sig = sign(client._suite, signer, canonical.encode("utf-8"), csprng=client._csprng)
     out = dict(headers)
     out["x-wop-sign"] = (
         f'{client._suite.security_req} {auth}/{";".join(sorted(headers))}/{b64url_encode(sig)}'
@@ -222,10 +233,12 @@ class TestVerifyResponseL0:
         assert result.ok, result.reason
         assert result.plaintext == draft.wire_body
 
-    def test_l0_roundtrip_sm(self, sm_client):
+    def test_l0_sm_self_draft_rejected(self, sm_client):  # spec:D15 否定式
+        # D15 拆分：入向验签身份=平台固定值 ≠ 出向签名身份=appKey（D14），
+        # 自发出向 draft 冒充平台响应必须被拒（RSA 无 ZA 概念，自回环不受影响）
         draft = sm_client.build_request("POST", PATH, "中文响应".encode())
         result = sm_client.verify_response(draft.headers, draft.wire_body, PATH)
-        assert result.ok, result.reason
+        assert not result.ok
 
     def test_l0_no_body_response_ok(self, rsa_client):
         draft = rsa_client.build_request("GET", "/q")
