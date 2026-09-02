@@ -311,7 +311,8 @@ class TestSm2InboundZaUserId:  # spec:D15 入向验签 ZA userId = 平台固定�
             "x-wop-nonce": "ab" * 16,
             "x-wop-content-digest": f"sm3 {_sm3.sm3_hash(list(body))}",
         }
-        q = lambda s: quote(s, safe=".*-")  # noqa: E731（F2 Java URLEncoder 语义）
+        def q(s):
+            return quote(s, safe=".*-")  # F2 Java URLEncoder 语义：仅保序保留 .*- 未编码
         lines = "\n".join(f"{q(k)}:{q(v)}" for k, v in sorted(h.items()))
         canonical = "\n".join(["v1/1800", "POST", "/res", "", lines]).encode("utf-8")
         entl = format(len(uid) * 8, "04x")
