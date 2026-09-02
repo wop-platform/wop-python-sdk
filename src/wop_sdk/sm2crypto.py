@@ -68,9 +68,9 @@ class Sm2Ops(CryptSM2):
                 "SM2 签名/验签必须显式指定 userId（D14 出向：config.appKey；D15 入向：平台固定值）"
             )
         uid = self._user_id.encode("utf-8")
-        if len(uid) * 8 > 0xFFFF:
-            # ENTL 为 2 字节字段（GM/T 0003.2）；超长 userId 前置拒绝为配置类错误，
-            # 而非放任 format() 生成 >2B 的 ENTL 使 a2b_hex 抛编码异常（PR#28 Sourcery）
+        if len(uid) > 8191:  # 等价于 len(uid)*8 > 0xFFFF：ENTL 为 2 字节字段（GM/T 0003.2）；
+            # 超长 userId 前置拒绝为配置类错误，而非放任 format() 生成 >2B 的 ENTL
+            # 使 a2b_hex 抛编码异常（PR#28 Sourcery）
             raise KeyMaterialError("SM2 userId 编码后长度不能超过 65535 bit（ENTL 为 2 字节，GM/T 0003.2）")
         entl = format(len(uid) * 8, "04x")  # 2 字节大端 ID 比特长度 hex；'0080' = 128bit 特例
         z = (
