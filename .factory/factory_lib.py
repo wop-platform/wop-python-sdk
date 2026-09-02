@@ -32,7 +32,19 @@ import sys
 import time
 from pathlib import Path
 
-import hosting  # 托管平台抽象层（ADR-008）：中立 schema，gh/云效差异在其内
+# 字节码密闭（issue #107）：本文件常以 `python3 factory_lib.py` 子进程方式被
+# sync/dispatch 等脚本调用，import hosting 会在调用方仓的 .factory/ 留下
+# 未跟踪 __pycache__——污染下游仓「落库后工作树干净」断言与巡检。hosting
+# 是本仓唯一仓内 import，只需在其导入期间禁写字节码（pyc 写入发生在被导入
+# 模块执行前），随后恢复原值——避免本模块被 pytest 等长生命周期进程 import
+# 时永久改变宿主进程的全局缓存行为（__main__ 自身不缓存；本模块在 pytest
+# 进程中的自身缓存由根 .gitignore 兜底）。
+_previous_dont_write_bytecode = sys.dont_write_bytecode
+sys.dont_write_bytecode = True
+try:
+    import hosting  # 托管平台抽象层（ADR-008）：中立 schema，gh/云效差异在其内
+finally:
+    sys.dont_write_bytecode = _previous_dont_write_bytecode
 
 
 class CircuitOpen(RuntimeError):
@@ -237,17 +249,41 @@ def final_gate_cmd() -> str:
 
     ADR-009 门命令数据化：fix-issue / validate-pr / mutations 共用此配置，
     消灭三处硬编码漂移面。拆词由调用方执行——bash 侧 read -r -a 与
-    mutations 侧 shlex.split 的语义分叉点有二：引号（shlex 剥除、read
-    字面）与反斜杠（shlex 转义、read -r 字面——`a\\ b` 两侧词数即不同：
-    2 词 vs 1 词）。故配置值**禁含引号与反斜杠**（引号 review R2-M8；
-    反斜杠 ADR-010 漂移锁收口），含即 fail-closed；纯空白分隔下两拆词器
-    逐词一致，两门 argv 永远相等。
+    mutations 侧 shlex.split 的语义分叉点有三：引号（shlex 剥除、read
+    字面）、反斜杠（shlex 转义、read -r 字面——`a\\ b` 两侧词数即不同：
+    2 词 vs 1 词）与换行（read -r -a 只取 here-string 首行，shlex 多行
+    拆词）。故配置值**禁含引号、反斜杠与换行**（引号 review R2-M8；反斜杠
+    ADR-010 漂移锁收口；换行 ts#19 审查收口），含即 fail-closed；纯空白
+    分隔下两拆词器逐词一致，两门 argv 永远相等。
     """
     v = _local_str("final_gate_cmd")
     if "'" in v or '"' in v:
         raise RuntimeError("final_gate_cmd 禁含引号（read -r -a 与 shlex 拆词一致性）")
     if "\\" in v:
         raise RuntimeError("final_gate_cmd 禁含反斜杠（shlex 转义与 read -r 字面语义分叉，ADR-010）")
+    if "\n" in v or "\r" in v:
+        raise RuntimeError("final_gate_cmd 禁含换行（read -r -a 只取首行，shlex 多行拆词，两侧 argv 分歧）")
+    return v
+
+
+def docstring_gate_cmd() -> str | None:
+    """docstring 门命令（可选键，缺省不启用；取值见 factory-local.json）。
+
+    与 final_gate_cmd 同构但为**可选**门：键缺失/不存在 → 返回 None（链脚本
+    跳过，仓库无 docstring 门）；键存在 → 语义与 final_gate_cmd 完全一致
+    （非空字符串 + 禁引号/反斜杠/换行，fail-closed：配置损坏即 RuntimeError，
+    禁止静默降级为无门）。对外 API 100% 可文档化 + 内部 API ≥80% 的阈值由
+    各仓检查器自定（语言 AST 异构，不在此数据化），本键只承载命令。
+    """
+    if "docstring_gate_cmd" not in _LOCAL_CFG:
+        return None
+    v = _local_str("docstring_gate_cmd")
+    if "'" in v or '"' in v:
+        raise RuntimeError("docstring_gate_cmd 禁含引号（read -r -a 与 shlex 拆词一致性）")
+    if "\\" in v:
+        raise RuntimeError("docstring_gate_cmd 禁含反斜杠（shlex 转义与 read -r 字面语义分叉，ADR-010）")
+    if "\n" in v or "\r" in v:
+        raise RuntimeError("docstring_gate_cmd 禁含换行（read -r -a 只取首行，shlex 多行拆词，两侧 argv 分歧）")
     return v
 
 
@@ -265,18 +301,14 @@ def repo_vars_text() -> str:
         f"- 审查依据目录: {_local_str('review_basis')}",
         f"- final_gate 命令: {final_gate_cmd()}",
     ]
+    if (dg := docstring_gate_cmd()) is not None:
+        lines.append(f"- docstring 门命令: {dg}")
     if "pr_review_skills" in _LOCAL_CFG:
         # 键存在即严格校验（与 local-list 同规）：值损坏 fail-closed；
         # 键缺失 = 本仓无守卫技能面（如纯后端仓），合法省略该行。
         skills = _local_str_list("pr_review_skills")
         lines.append(f"- 守卫技能（PR 评审选配面）: {'、'.join(skills)}")
     return "\n".join(lines)
-
-# ═════════════════════════════════════════════════════════════════════
-# 上游分发清单展开（2026-08-28 自 sync-from-upstream.sh 内嵌 heredoc 下沉，
-# 铁律 4：git 子进程编排归 Python；曾处 killpg 门[只扫 *.py]与 pipe 门
-# [只扫 *.sh]的双盲缝隙）
-# ═════════════════════════════════════════════════════════════════════
 
 
 def dist_manifest_lines(up: str, sha: str) -> list[str]:
@@ -870,7 +902,10 @@ def dispatch_main(args: list[str]) -> int:
     r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
                        capture_output=True, text=True)
     if r.returncode != 0:
-        print("不在 git 仓库", file=sys.stderr)
+        # 诊断附着（2026-08-27 bare 事故：笼统消息掩盖 core.bare=true 8 小时）
+        bare = subprocess.run(["git", "config", "core.bare"],
+                              capture_output=True, text=True).stdout.strip()
+        print(f"不在 git 仓库（诊断: core.bare={bare or '?'}）", file=sys.stderr)
         return 2
     repo = Path(r.stdout.strip())
     factory = repo / ".factory"
@@ -984,8 +1019,14 @@ def main(argv: list[str]) -> int:
             print(s)
         return 0
     if cmd == "final-gate":
-        # final-gate —— 确定性测试门命令（ADR-009 数据化；链脚本 read -ra 拆词执行）
+        # final-gate —— 确定性测试门命令（ADR-009 唯一取值口；fix-issue.sh
+        # / validate-pr.sh read -ra 拆词执行；配置损坏 fail-closed 非零终止）
         print(final_gate_cmd())
+        return 0
+    if cmd == "docstring-gate":
+        # docstring-gate —— docstring 门命令（可选键；空输出=未启用，链脚本跳过）
+        if (v := docstring_gate_cmd()) is not None:
+            print(v)
         return 0
     if cmd == "local-str":
         # local-str <key> —— 单字符串键输出（feedback-upstream 上游指针等；ADR-009）

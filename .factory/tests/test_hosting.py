@@ -20,6 +20,7 @@ import pytest
 
 import hosting
 
+
 def _raise(exc: BaseException) -> None:
     """异常注入辅助：mock 回调用（lambda 内不能 raise 语句）。"""
     raise exc
@@ -150,17 +151,34 @@ class TestCodeupShapes:
                        "title": "T", "description": "D"}},
             # 【live 2026-08-26】MR 详情无 labels 字段，类标专用端点读回
             ("GET", "/changeRequests/3/labels"): [
-                {"name": "factory:needs-fix"}]}, monkeypatch)
+                {"name": "factory:needs-fix"}],
+            # #66 评论标记模型：pr_view 兼查标记评论（active 承载 needs-fix——
+            # 投影语义：无 active 标记的原生工厂类标视为投影失真被过滤）
+            ("POST", "/comments/list"): {"result": [
+                {"id": "c1", "content": "[factory:label:add] factory:needs-fix",
+                 "resolved": False}]}}, monkeypatch)
         n = ad.pr_view(3)
         assert n["review"] == "changes_requested"
         assert n["state"] == "open"
         assert n["labels"] == ["factory:needs-fix"]
         assert n["head"] == "s" and n["base"] == "t"
 
+    def test_pr_set_labels_link_post_degrades(self, monkeypatch, capsys):
+        """类标 Link POST 失败 → 降级告警不冒泡（skills#12 审查收口：标记
+        评论已承载状态机语义，Link 仅平台原生补充——对齐 _label_id 降级）。"""
+        ad = self._ad({
+            ("POST", "/changeRequests/3/comments"): {"result": {"id": "c1"}},
+            ("GET", "/labels"): [{"name": "factory:needs-review", "id": 7}],
+            # 故意不路由 POST .../labels → fake_req 抛 HostingError → 降级
+        }, monkeypatch)
+        assert ad.pr_set_labels(3, add=["factory:needs-review"]) is True
+        assert "类标 Link 降级" in capsys.readouterr().err
+
         ad2 = self._ad({("GET", "/changeRequests/4"): {
             "result": {"localId": 4, "newVersionState": "MERGED",
                        "reviewers": [{"reviewOpinionStatus": "PASS"},
-                                     {"reviewOpinionStatus": "PASS"}]}}}, monkeypatch)
+                                     {"reviewOpinionStatus": "PASS"}]}},
+            ("POST", "/comments/list"): {"result": []}}, monkeypatch)
         n2 = ad2.pr_view(4)
         assert n2["review"] == "approved" and n2["state"] == "merged"
 
@@ -221,14 +239,20 @@ class TestCodeupShapes:
         ad = self._ad({
             ("GET", "/labels"): {"result": [
                 {"id": "lbl-9", "name": "factory:needs-review"}]},
+            # #66 标记模型：add 先发标记评论，类标 Link 为补充载体
+            ("POST", "/comments"): {"success": True},
             ("POST", "/changeRequests/7/labels"): {"success": True}}, monkeypatch)
         ad.pr_set_labels(7, add=["factory:needs-review"])
+        marker = [s for s in ad.seen if s[0] == "POST"
+                  and s[1].endswith("/comments")][0]
+        assert marker[2]["content"] == "[factory:label:add] factory:needs-review"
+        assert marker[2]["resolved"] is False
         link = [s for s in ad.seen if s[0] == "POST" and "labels" in s[1]][0]
         assert link[2] == {"labelIdList": ["lbl-9"]}  # live 破案键名（labelIds 拒）
 
 
 class TestCodeupGaps:
-    """平台缺口三件套必须 fail-closed（exit 2），静默降级=状态机半转移。"""
+    """平台缺口收敛后仍 fail-closed（exit 2）的操作集。"""
 
     def _ad(self, monkeypatch):
         monkeypatch.setenv("YUNXIAO_ACCESS_TOKEN", "t")
@@ -238,10 +262,8 @@ class TestCodeupGaps:
         ad._req = lambda *a, **k: {"success": True, "result": []}
         return ad
 
-    # issue 面已实装（#67）;此处收敛 MR 面真缺口（#66 范围）
+    # 缺口 (b)(c) 已由评论标记模型承载（#66）；真缺口仅剩 diff 全文
     @pytest.mark.parametrize("fn", [
-        lambda ad: ad.label_history(2),
-        lambda ad: ad.pr_set_labels(2, remove=["x"]),
         lambda ad: ad.pr_diff(2),
     ])
     def test_unsupported_ops_exit2(self, fn, monkeypatch):
@@ -249,6 +271,127 @@ class TestCodeupGaps:
             fn(self._ad(monkeypatch))
         assert e.value.code == 2
         assert "ADR-008" in str(e.value)
+
+
+class TestCodeupMarkerModel:
+    """#66 评论标记模型：add/remove 序列、label_history 轮次语义、
+    changes-requested 手势映射。"""
+
+    def _ad(self, monkeypatch, comments_by_resolved):
+        """comments_by_resolved: {False: [未resolved评论], True: [已resolved评论]}
+        自定义 mock 按 body['resolved'] 分流（_ad 简单路由无法区分两态）。"""
+        monkeypatch.setenv("YUNXIAO_ACCESS_TOKEN", "t")
+        monkeypatch.setenv("CODEUP_ORG_ID", "org")
+        monkeypatch.setenv("CODEUP_REPO_ID", "42")
+        ad = hosting.CodeupAdapter()
+        ad.seen = []
+
+        def fake_req(method, path, body=None, query=None, _retry_rdc=True):
+            ad.seen.append((method, path, body, query))
+            if method == "POST" and path.endswith("/comments/list"):
+                return {"result": comments_by_resolved.get(
+                    (body or {}).get("resolved"), [])}
+            return {"success": True, "result": []}
+        ad._req = fake_req
+        return ad
+
+    def test_remove_resolves_marker_keeps_content(self, monkeypatch):
+        """remove = 置 resolved（PUT comments/{id}），内容保留——轮次不减。"""
+        ad = self._ad(monkeypatch, {False: [
+            {"id": "c-1", "content": "[factory:label:add] factory:needs-fix"},
+            {"id": "c-2", "content": "[factory:label:add] factory:approved"}]})
+        ad.pr_set_labels(7, remove=["factory:needs-fix"])
+        puts = [s for s in ad.seen if s[0] == "PUT"]
+        assert len(puts) == 1  # 只 resolve needs-fix，approved 不动
+        assert puts[0][1].endswith("/changeRequests/7/comments/c-1")
+        assert puts[0][2] == {"resolved": True}
+
+    def test_remove_idempotent_no_marker(self, monkeypatch, capsys):
+        ad = self._ad(monkeypatch, {})
+        assert ad.pr_set_labels(7, remove=["x"]) is True
+        assert not [s for s in ad.seen if s[0] == "PUT"]
+        assert "幂等跳过" in capsys.readouterr().err
+
+    def test_pr_labels_merges_two_carriers(self, monkeypatch):
+        """labels = 类标 Link ∪ 未 resolved 标记（两载体合并去重）。"""
+        ad = self._ad(monkeypatch, {False: [
+            {"id": "c-1", "content": "[factory:label:add] factory:needs-fix"}]})
+
+        real_req = ad._req
+
+        def fake_req(method, path, body=None, query=None, _retry_rdc=True):
+            if method == "GET" and path.endswith("/labels"):
+                return [{"name": "factory:needs-fix"}, {"name": "factory:extra"},
+                        {"name": "release/x"}]
+            return real_req(method, path, body, query, _retry_rdc)
+        ad._req = fake_req
+        # 标记是真相源：factory:extra 无未 resolved 标记 → 屏蔽；
+        # 非 factory 前缀类标（release/x）不受标记生命周期约束
+        assert ad._pr_labels(7) == ["factory:needs-fix", "release/x"]
+
+    def test_pr_labels_marker_failure_degrades_best_effort(self, monkeypatch, capsys):
+        """Sourcery #11：评论端点失败降级空集——标签读失败不阻断 PR 详情
+        （尽力而为契约；写路径 pr_set_labels 仍显式失败）。"""
+        ad = self._ad(monkeypatch, {})
+        real_req = ad._req
+
+        def fake_req(method, path, body=None, query=None, _retry_rdc=True):
+            if method == "GET" and path.endswith("/labels"):
+                return [{"name": "factory:needs-fix"}]
+            if method == "POST" and path.endswith("/comments/list"):
+                raise hosting.HostingError("comments endpoint down")
+            return real_req(method, path, body, query, _retry_rdc)
+        ad._req = fake_req
+        assert ad._pr_labels(7) == ["factory:needs-fix"]  # 类标保留，标记载体降级
+        assert "降级空集" in capsys.readouterr().err
+
+    def test_pr_view_marker_failure_keeps_review(self, monkeypatch, capsys):
+        """手势载体失败：review 维持平台原生映射，pr_view 不抛、不误报。"""
+        ad = self._ad(monkeypatch, {})
+        real_req = ad._req
+
+        def fake_req(method, path, body=None, query=None, _retry_rdc=True):
+            if method == "GET" and path.endswith("/changeRequests/5"):
+                return {"result": {"localId": 5, "newVersionState": "TO_BE_MERGED",
+                                   "reviewers": [{"reviewOpinionStatus": "PASS"}]}}
+            if method == "GET" and path.endswith("/labels"):
+                return []
+            if method == "POST" and path.endswith("/comments/list"):
+                raise hosting.HostingError("comments endpoint down")
+            return real_req(method, path, body, query, _retry_rdc)
+        ad._req = fake_req
+        out = ad.pr_view(5)
+        assert out["labels"] == []
+        assert out["review"] != "changes_requested"  # 载体缺席不得误报打回
+        assert "降级空集" in capsys.readouterr().err
+
+    def test_label_history_resolved_does_not_decrease(self, monkeypatch):
+        """轮次语义：resolved 不减计数——全部 add 标记都计入事件流。"""
+        ad = self._ad(monkeypatch, {
+            False: [{"id": "c-2", "content": "[factory:label:add] factory:needs-fix"}],
+            True: [{"id": "c-1", "content": "[factory:label:add] factory:needs-fix"}]})
+        hist = ad.label_history(7)
+        assert hist == [{"op": "add", "label": "factory:needs-fix"},
+                        {"op": "add", "label": "factory:needs-fix"}]
+
+    def test_changes_requested_gesture_maps_review(self, monkeypatch):
+        """[factory:changes-requested] 评论 → changes_requested（无
+        reviewDecision 等价物场景）；reviewer PASS 映射不覆盖手势。"""
+        ad = self._ad(monkeypatch, {False: [
+            {"id": "c-9", "content": "[factory:changes-requested] 命名漂移"}]})
+
+        real_req = ad._req
+
+        def fake_req(method, path, body=None, query=None, _retry_rdc=True):
+            if method == "GET" and path.endswith("/changeRequests/5"):
+                return {"result": {"localId": 5, "newVersionState": "TO_BE_MERGED",
+                                   "reviewers": [{"reviewOpinionStatus": "PASS"}]}}
+            if method == "GET" and path.endswith("/labels"):
+                return []
+            return real_req(method, path, body, query, _retry_rdc)
+        ad._req = fake_req
+        n = ad.pr_view(5)
+        assert n["review"] == "changes_requested"  # 手势取严于 reviewer PASS
 
 
 
@@ -475,9 +618,13 @@ class TestCodeupEndpointFallback:
     """【实测】默认端点受限网络 TLS 静默丢弃 → 中心版端点一次重试。"""
 
     def test_urLError_retries_rdc(self, monkeypatch):
-        import urllib.error as ue
         ad = hosting.CodeupAdapter()
+        calls = []
 
+        class _Err(Exception):
+            pass
+
+        import urllib.error as ue
         monkeypatch.setattr(
             hosting.urllib.request,
             "urlopen",
@@ -489,7 +636,7 @@ class TestCodeupEndpointFallback:
         with pytest.raises(hosting.HostingError) as e:
             ad._req("GET", "/oapi/v1/codeup/organizations/org/repositories/42")
         # 两次都失败才报错；且报错信息指向重试后的端点
-        assert re.search(r"openapi-rdc\.aliyuncs\.com", str(e.value))  # codeql[py/incomplete-url-substring-sanitization] ADR-GH1：断言消息含端点（regex 形式脱离子串校验 sink 模式），非 URL 安全校验
+        assert re.search(r"openapi-rdc\.aliyuncs\.com", str(e.value))  # codeql[py/incomplete-url-substring-sanitization] ADR-GH1: 断言消息含端点 (regex 形式脱离子串校验 sink 模式), 非 URL 安全校验
 
 
 class TestCli:
@@ -565,3 +712,119 @@ class TestCli:
             for c in cs[-3:])
         assert "[作者: someone]" in out
         assert "[作者: ?]" in out  # 缺 author 不炸
+
+
+class TestIssueCreateAcceptanceGate:
+    """issue create 验收明确性预检（#104/#109 triage 对比观察落地：
+    创建时拦截无验收载体的正文，比 triage 判据 b 打回省一轮往返）。
+
+    缺陷→测试映射：
+    - #104 形态（描述+建议、无验收载体）拦 → test_rejects_104_style_body
+    - #109 形态（验收判据节+checkbox）过 → test_accepts_109_style_body
+    - 空/空白/None body 拦 → test_rejects_empty_body
+    - 仅「验收/acceptance」节（机器模板形态）过
+      → test_accepts_acceptance_heading
+    - CLI 端到端：预检失败 exit 2 且先于平台触达
+      → test_cli_gate_fails_closed
+    """
+
+    BODY_104 = ("## 问题\nsync 分发缺 CODEOWNERS 三态管理。\n\n"
+                "## 建议方向\n补入 DISTRIBUTION.json。")
+    BODY_109 = ("## 根因\n宿主环境渗漏两陷阱。\n\n## 验收判据\n\n"
+                "- [ ] 完整 PATH 全套件绿\n"
+                "- [ ] 无 homebrew PATH 全套件绿\n"
+                "- [ ] 全程无出网\n"
+                "- [ ] 301 零回归")
+
+    def test_accepts_109_style_body(self):
+        assert hosting._issue_acceptance_error(self.BODY_109) is None
+
+    def test_rejects_104_style_body(self):
+        err = hosting._issue_acceptance_error(self.BODY_104)
+        assert err is not None
+        assert "验收" in err
+
+    def test_rejects_empty_body(self):
+        assert hosting._issue_acceptance_error("") is not None
+        assert hosting._issue_acceptance_error("   ") is not None
+        assert hosting._issue_acceptance_error(None) is not None
+
+    def test_accepts_acceptance_heading(self):
+        # 机器模板形态：验收节存在即可（节内判定语句由模板补全）
+        body = ("## 现象\n上游 local 面漂移。\n\n"
+                "## Acceptance Criteria\n--check 不再报分叉即完成。")
+        assert hosting._issue_acceptance_error(body) is None
+
+    def test_cli_gate_fails_closed(self, capsys):
+        # 端到端：预检失败 → exit 2 + stderr 提示，先于任何平台触达
+        with pytest.raises(SystemExit) as e:
+            hosting.main(["issue", "create", "--title", "t",
+                          "--body", self.BODY_104])
+        assert e.value.code == 2
+        assert "预检未过" in capsys.readouterr().err
+
+
+
+class TestIssueCreateLabelGate:
+    """issue create 标签合法性预检（第三层：factory: 命名空间保留）。
+
+    语义 = factory:* 命名空间属状态机/门控（regression/README.md：「打
+    其他 factory:* 标签会永远不被拾取」）。命名空间拦截 fail-closed：
+    typo 与新增状态标签自动被拦，不依赖枚举镜像。豁免 needs-human
+    （机器「不可自动」合法落点，upstream-sync 实证）；非 factory 标签
+    （priority:* dispatch 消费面）放行。
+
+    缺陷→测试映射：
+    - needs-human 过（机器实证用法）→ test_allows_needs_human
+    - 8 个状态机保留标签拦 → test_blocks_state_machine_labels
+    - typo / PR 门控产物（validated 族）拦 → test_blocks_unknown_factory_labels
+    - 非 factory 标签/空放行 → test_allows_non_factory_and_empty
+    - 命名空间覆盖 state 全部状态标签（防脱节）→ test_state_labels_covered_by_namespace
+    - CLI 端到端：非法标签 exit 2 且先于平台触达 → test_cli_gate_fails_closed
+    """
+
+    def test_allows_needs_human(self):
+        assert hosting._issue_label_error("factory:needs-human") is None
+
+    def test_blocks_state_machine_labels(self):
+        for label in ("factory:triaging", "factory:in-progress",
+                      "factory:accepted", "factory:needs-review",
+                      "factory:needs-fix", "factory:approved",
+                      "factory:rejected", "factory:in-review"):
+            err = hosting._issue_label_error(label)
+            assert err is not None, label
+            assert "factory: 命名空间" in err, label
+
+    def test_blocks_unknown_factory_labels(self):
+        # fail-closed：typo 与非状态机 factory 标签（PR 门控产物）
+        # 同拦——枚举黑名单会放行这些（advisory 指出的缺口）
+        for label in ("factory:accepetd",       # typo
+                      "factory:validated",      # validate-pr 门控产物
+                      "factory:validation-failed"):
+            assert hosting._issue_label_error(label) is not None, label
+
+    def test_allows_non_factory_and_empty(self):
+        assert hosting._issue_label_error("priority:critical") is None
+        assert hosting._issue_label_error("bug") is None
+        assert hosting._issue_label_error(None) is None
+        assert hosting._issue_label_error("") is None
+
+    def test_state_labels_covered_by_namespace(self):
+        # 单一来源锁：state.py 全部状态标签（三集合+裁决/接管态）落在
+        # 命名空间拦截内（needs-human 豁免除外）——命名空间断言与
+        # 状态机实际定义不脱节
+        import state
+        for label in (state.LOCKS | state.QUEUE | state.PR_SIDE
+                      | {"factory:rejected", "factory:in-review"}):
+            if label == "factory:needs-human":
+                assert hosting._issue_label_error(label) is None
+            else:
+                assert hosting._issue_label_error(label) is not None, label
+
+    def test_cli_gate_fails_closed(self, capsys):
+        # 端到端：body 先过第二层（含验收节），第三层拦非法标签 → exit 2
+        with pytest.raises(SystemExit) as e:
+            hosting.main(["issue", "create", "--title", "t", "--body",
+                          "## 验收\n- [ ] x", "--label", "factory:accepted"])
+        assert e.value.code == 2
+        assert "预检未过" in capsys.readouterr().err
