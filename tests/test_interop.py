@@ -9,7 +9,7 @@ crypto-vectors.json 同一纪律）；真源 sha256 哨兵钉死字节一致。
 - README 消费要求 2（build 复现：byte-exact 全量 / deterministic-fields 剥 opaque）
   → TestInteropConformanceBuild（6 条：3 套件 × L0/L2）
 - README 消费要求 3（verify positive 明文一致 / negative 错误分类对账）
-  → TestInteropConformanceVerify（7 positive + 16 negative）
+  → TestInteropConformanceVerify（7 positive + 17 negative）
 - README 消费要求 4（条数哨兵 + 已知 id 哨兵）→ TestInteropFixtureIntegrity
 - README 随机流消费顺序合同（[nonce 池][CEK][IV][k…]）→ HexStream + build 复现
   （nonce 注入跳过池段，CEK/IV 取前段，wire/digest 头字节级一致）
@@ -39,17 +39,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE_PATH = os.path.join(HERE, "fixtures", "interop-cases.json")
 
 # 真源 wop-specs/interop/v1/interop-cases.json 的 sha256（字节副本哨兵）
-EXPECTED_SHA256 = "3030e98fa6174f1ca905f35d7742ac9471141945dde66f29f01021d51a555f7a"
+EXPECTED_SHA256 = "c920ca1a93ccb3899a659f59fed6ec4652cf9e1b3b58bbdac23c45ac3ed2353e"
 EXPECTED_FORMAT = "wop-interop-1"
 
 with open(FIXTURE_PATH, "r", encoding="utf-8") as _f:
     FIXTURE = json.load(_f)
 
 # ---------- 哨兵（README 消费要求 4：防 fixture 漂移静默通过）----------
-INTEROP_CASE_COUNT = 29
+INTEROP_CASE_COUNT = 30
 BUILD_COUNT = 6
 VERIFY_POSITIVE_COUNT = 7
-VERIFY_NEGATIVE_COUNT = 16
+VERIFY_NEGATIVE_COUNT = 17
 KNOWN_INTEROP_IDS = frozenset(
     {
         "build:WOP-RSA3072-SHA256:L0",
@@ -81,11 +81,13 @@ KNOWN_INTEROP_IDS = frozenset(
         "n14-missing-signed-header",
         "n15-digest-without-body",
         "n16-replay-cross-path",
+        "n17-encrypt-missing-dek",
     }
 )
 
 # ---------- 本仓错误类型 → 跨仓 canonical class 显式映射表（README 消费要求 3）----------
-# 分类合同（README 错误分类表 + 已裁决分歧 1-3）：
+# 分类合同（README 错误分类表 + 已裁决分歧 0-3）：
+#   x-wop-encrypt 裸 L2 缺 ;dek=（裁决 0，n17）→ protocol（明确）；
 #   签名/密文 b64url 非法结构 → protocol（明确）；DEK 载荷结构畸形除 alg 跨族外 →
 #   decrypt-failed（模糊）；digest 未入 signedHeaders（I1）→ protocol（明确）。
 CANONICAL_ERROR_CLASS = {
@@ -93,7 +95,7 @@ CANONICAL_ERROR_CLASS = {
     DecryptError: "decrypt-failed",  # I7 模糊（n01/n05/n13）
     DigestMismatchError: "digest-mismatch",  # 明确（n02/n09）
     DekConsistencyError: "alg-mismatch",  # D8 明确（n04）
-    ProtocolFormatError: "protocol",  # 明确（n03/n06/n07/n08/n10/n12/n14/n15）
+    ProtocolFormatError: "protocol",  # 明确（n03/n06/n07/n08/n10/n12/n14/n15/n17）
     UnsupportedSuiteError: "protocol",  # I5 明确（n03/n11）
     SuiteParseError: "protocol",  # 明确
 }

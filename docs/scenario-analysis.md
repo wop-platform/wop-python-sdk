@@ -106,7 +106,7 @@ SDK 的网关定位（spec §1）：商户**无需理解** canonicalRequest、�
 | S8-01 digest/signature/keyEncrypt/dekPayload 黄金向量字节级一致 | byte-exact | T:test_digest/test_signature/test_envelope | 全算子 |
 | S8-02 formatRules 12 条全量循环+未知 id 哨兵+条数哨兵 | 三件套 | T:test_digest/test_encoding | num 变异 |
 | S8-03 负向量：tamper/跨族/错长度/带 `=`/非规范尾随位全拒 | 拒绝 | T:test_*（各文件负例） | cmp/位运算变异 |
-| S8-04 interop/v1 29 条样本（真源独立构造） | 合同 | T:test_interop.py | 全算子 |
+| S8-04 interop/v1 30 条样本（真源独立构造） | 合同 | T:test_interop.py | 全算子 |
 
 ### S9 错误分类（I7/§10.2）
 
