@@ -107,7 +107,7 @@ MGF1-SHA1 陷阱密文，全部必须拒绝。CI（3.9–3.14 × linux/macOS 矩
 
 另消费 `wop-specs` 组织级 interop 样本集（`tests/fixtures/interop-cases.json` 字节
 副本，sha256 哨兵钉死）：build 方向按冻结输入复现 draft（RSA byte-exact；SM2 按
-opaque 剥离签名/包装段），verify 方向 23 条冻结样本逐条对账明文与错误分类
+opaque 剥离签名/包装段），verify 方向 24 条冻结样本逐条对账明文与错误分类
 （canonical class 映射表见 `tests/test_interop.py`）。
 
 ## 错误处理与模糊化
