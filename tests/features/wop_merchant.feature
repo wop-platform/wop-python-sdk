@@ -1,6 +1,6 @@
 # language: zh-CN
 # 规格来源: wop-specs/sdk/wop-sdk-spec.md（F1-F9、D1-D5、I1-I7）
-# 场景分析: docs/scenario-analysis.md（S1-S10 → 本文件 20 场景）
+# 场景分析: docs/scenario-analysis.md（S1-S10 → 本文件 21 场景）
 功能: 商户接入 WOP 网关全旅程
   商户使用官方 SDK 完成: 套件配置(F1) → 出向 L0/L2 请求(F2-F5/F9)
   → 平台响应/回调校验(F6/F7) → 错误分类(I7)。
@@ -56,7 +56,7 @@
 
   场景: 非法安全等级被拒绝
     当 商户以非法等级 L3 发起请求
-    那么 抛出 ValueError
+    那么 抛出 ConfigurationError
 
   # ---------- S5 入向 L0 ----------
 

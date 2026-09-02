@@ -7,6 +7,7 @@ from importlib.metadata import PackageNotFoundError, version as _dist_version
 
 from .client import RequestDraft, VerifyResult, WopClient, WopConfig
 from .errors import (
+    ConfigurationError,
     DecryptError,
     DekConsistencyError,
     DigestMismatchError,
@@ -27,20 +28,21 @@ except PackageNotFoundError:  # pragma: no cover —— 无分发元数据时的
     __version__ = "0.0.0"
 
 __all__ = [
-    "WopClient",
-    "WopConfig",
-    "RequestDraft",
-    "VerifyResult",
-    "Suite",
-    "parse_suite",
-    "WopSdkError",
-    "SuiteParseError",
-    "UnsupportedSuiteError",
-    "ProtocolFormatError",
-    "KeyMaterialError",
-    "DigestMismatchError",
-    "SignatureVerifyError",
+    "ConfigurationError",
     "DecryptError",
     "DekConsistencyError",
+    "DigestMismatchError",
+    "KeyMaterialError",
+    "ProtocolFormatError",
+    "RequestDraft",
+    "SignatureVerifyError",
+    "Suite",
+    "SuiteParseError",
+    "UnsupportedSuiteError",
+    "VerifyResult",
+    "WopClient",
+    "WopConfig",
+    "WopSdkError",
     "__version__",
+    "parse_suite",
 ]

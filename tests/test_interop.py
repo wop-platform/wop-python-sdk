@@ -128,8 +128,12 @@ def _wire_bytes(b64u: str) -> bytes:
     return b64url_decode(b64u) if b64u else b""
 
 
-def _interop_client(vec_keys, suite: str, csprng=None) -> WopClient:
-    """按套件从黄金向量取密钥构造客户端（与 crypto-vectors.json 同源，镜像 Go interopClient）。"""
+def _interop_client(vec_keys, suite: str, csprng=None, app_key: str = "app_interop_001") -> WopClient:
+    """按套件从黄金向量取密钥构造客户端（与 crypto-vectors.json 同源，镜像 Go interopClient）。
+
+    app_key：build/verify 用例统一为 'app_interop_001'（spec:D15 入向验签 ZA userId = 平台
+    固定值，与商户 app_key 解耦；fixture 平台响应按向量 sm2UserId=平台固定值签名）。
+    """
     if suite == "WOP-RSA4096-SHA256":
         merchant = vec_keys["rsa4096"]["privatePkcs8B64"]
         platform = vec_keys["rsa4096"]["publicSpkiB64"]
@@ -141,7 +145,7 @@ def _interop_client(vec_keys, suite: str, csprng=None) -> WopClient:
     kwargs = {"csprng": csprng} if csprng is not None else {}
     return WopClient(
         WopConfig(
-            app_key="app_interop_001",
+            app_key=app_key,
             suite=suite,
             merchant_private_key=merchant,
             platform_public_key=platform,
@@ -234,6 +238,8 @@ class TestInteropConformanceVerify:  # spec:interop-v1 消费要求 3
 
         def _client(suite):
             if suite not in cache:
+                # spec:D15 入向验签 ZA userId = 平台固定值，与商户 app_key 解耦（含 SM2 套件，
+                # 不再借 app_key=sm2UserId 同源技巧掩盖入向身份耦合）
                 cache[suite] = _interop_client(vec_keys, suite)
             return cache[suite]
 

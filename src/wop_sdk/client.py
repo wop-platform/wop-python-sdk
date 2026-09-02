@@ -17,6 +17,7 @@ from .digest import build_digest_header, verify_digest_header
 from .encoding import b64url_encode
 from .envelope import open_l2, seal_l2
 from .errors import (
+    ConfigurationError,
     DecryptError,
     DekConsistencyError,
     DigestMismatchError,
@@ -33,7 +34,7 @@ from .keys import (
     load_sm2_public_key,
 )
 from .signature import sign, verify
-from .sm2crypto import Sm2Ops, sm2_derive_public_hex
+from .sm2crypto import PLATFORM_INBOUND_USER_ID, Sm2Ops, sm2_derive_public_hex
 from .suites import Suite, parse_suite
 
 Csprng = Callable[[int], bytes]
@@ -88,7 +89,7 @@ class WopClient:
 
     def __init__(self, config: WopConfig, csprng: Csprng = os.urandom):
         if not config.app_key or not config.app_key.strip():
-            raise WopSdkError("appKey 不能为空")
+            raise ConfigurationError("appKey 不能为空")
         self._config = config
         self._suite = parse_suite(config.suite)
         if self._suite.family == "RSA":
@@ -101,9 +102,17 @@ class WopClient:
         else:
             d = load_sm2_private_key(config.merchant_private_key)
             merchant_pub_hex = sm2_derive_public_hex(d.hex())
-            self._signer = Sm2Ops(private_key_hex=d.hex(), public_xy_hex=merchant_pub_hex)
+            self._signer = Sm2Ops(
+                private_key_hex=d.hex(),
+                public_xy_hex=merchant_pub_hex,
+                user_id=config.app_key,
+            )
             platform_pub = load_sm2_public_key(config.platform_public_key)
-            self._wrap_pub = Sm2Ops(public_xy_hex=platform_pub.xy_hex)
+            # spec:D15 入向验签 ZA userId = 平台固定值（非商户 appKey；D14 的 appKey 仅限
+            # 出向签名者 _signer）。L2 出向加密不走 _sm3_z，user_id 对 seal_l2 无影响。
+            self._wrap_pub = Sm2Ops(
+                public_xy_hex=platform_pub.xy_hex, user_id=PLATFORM_INBOUND_USER_ID
+            )
         self._csprng = csprng
 
     @property
@@ -132,7 +141,7 @@ class WopClient:
         [16B nonce 池][CEK][12B IV][k…]——nonce 注入时跳过 nonce 池段。
         """
         if level not in _LEVELS:
-            raise ValueError("level 必须为 L0 或 L2，实际 %r" % level)
+            raise ConfigurationError("level 必须为 L0 或 L2，实际 %r" % level)
         safe_method = method.strip().upper()
         # spec:interop-v1 随机流消费顺序：nonce 池最前，先于 seal_l2 的 CEK/IV
         if not nonce:
@@ -182,14 +191,14 @@ class WopClient:
     @staticmethod
     def _normalize_body(body: Optional[object]) -> bytes:
         if body is None:
-            raise ValueError("L2 封装需要明文 body")
+            raise ConfigurationError("L2 封装需要明文 body")
         if isinstance(body, bytes):
             return body
         if isinstance(body, str):
             return body.encode("utf-8")
         if isinstance(body, dict):
             return json.dumps(body, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        raise TypeError("body 仅接受 bytes/str/dict，实际 %r" % type(body).__name__)
+        raise ConfigurationError("body 仅接受 bytes/str/dict，实际 %r" % type(body).__name__)
 
     # ---------- 入向 ----------
 
