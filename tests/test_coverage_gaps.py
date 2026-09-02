@@ -30,7 +30,7 @@ from wop_sdk.keys import (
     load_sm2_public_key,
 )
 from wop_sdk.signature import verify as sig_verify
-from wop_sdk.sm2crypto import Sm2Ops, sm2_decrypt, sm2_sign_with_sm3
+from wop_sdk.sm2crypto import Sm2Ops, sm2_decrypt, sm2_sign_with_sm3, sm2_verify_with_sm3
 from wop_sdk.sm4gcm import sm4_gcm_decrypt
 from wop_sdk.suites import parse_suite
 
@@ -198,6 +198,26 @@ class TestSm2CryptoGaps:
         ops = Sm2Ops(private_key_hex=d.hex())  # 无 user_id（_sm3_z 立即拒绝）
         with pytest.raises(KeyMaterialError):
             sm2_sign_with_sm3(ops, b"payload", "%064x" % 1)
+
+    def test_sign_oversized_user_id_rejected(self, vec_keys):
+        # PR#28 Sourcery 修复：userId 编码后 > 65535 bit 时 ENTL 溢出 2 字节字段，
+        # 必须抛配置类 KeyMaterialError（category=configuration），而非 binascii 编码异常
+        d = load_sm2_private_key(vec_keys["sm2"]["privateDB64"])
+        ops = Sm2Ops(private_key_hex=d.hex(), user_id="x" * 8192)  # 65536 bit = 0x10000，恰越界 1 bit
+        with pytest.raises(KeyMaterialError) as ei:
+            sm2_sign_with_sm3(ops, b"payload", "%064x" % 1)
+        assert ei.value.category == "configuration"
+
+    def test_sign_max_entl_user_id_accepted(self, vec_keys):
+        # 边界正向：恰好 8191 字节（65528 bit = 0xFFF8）是 ENTL 可表达的最大合法值，不拒绝
+        pub = load_sm2_public_key(vec_keys["sm2"]["publicPointB64"])
+        d = load_sm2_private_key(vec_keys["sm2"]["privateDB64"])
+        uid = "x" * 8191
+        signer = Sm2Ops(private_key_hex=d.hex(), public_xy_hex=pub.xy_hex, user_id=uid)
+        verifier = Sm2Ops(public_xy_hex=pub.xy_hex, user_id=uid)
+        sig = sm2_sign_with_sm3(signer, b"payload", "%064x" % 2)
+        assert len(sig) == 64
+        assert sm2_verify_with_sm3(verifier, sig.hex(), b"payload")
 
     def test_encrypt_k_resampling(self, sm2_pair):
         # k 越界重采样（I4：CSPRNG 采样点收敛）
