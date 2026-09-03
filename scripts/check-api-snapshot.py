@@ -20,7 +20,7 @@
   默认：重生成到临时文件，与入库快照 `git diff --no-index --exit-code` 比对
         （CI 门禁路径；不依赖快照的 git 跟踪状态，杜绝假绿）
   --update：重新生成覆盖入库快照（有意变更公共 API 后显式更新基线）
-退出码: 0 = 快照与公共 API 一致（或已更新）；1 = 存在漂移。
+退出码: 0 = 快照与公共 API 一致（或已更新）；1 = 存在漂移；2 = 比对失败（git diff 自身故障，非漂移）。
 """
 import json
 import os
@@ -88,16 +88,23 @@ def main() -> int:
         )
     finally:
         os.unlink(tmp_path)
-    if proc.returncode:
+    if proc.returncode == 1:
         print(
             "API SNAPSHOT DRIFT: 公共 API 面与入库快照不一致（见上方 git diff）。\n"
             "有意变更：python3 scripts/check-api-snapshot.py --update 后将快照随 PR 提交；\n"
             "无意漂移：还原 API 变更。",
             file=sys.stderr,
         )
-    else:
-        print(f"api snapshot ok ({lines} 行)")
-    return proc.returncode
+        return 1
+    if proc.returncode:
+        print(
+            f"API SNAPSHOT DIFF FAILED: git diff --no-index 退出码 {proc.returncode}"
+            "（比对工具故障，非漂移，见上方 git 输出）。",
+            file=sys.stderr,
+        )
+        return 2
+    print(f"api snapshot ok ({lines} 行)")
+    return 0
 
 
 if __name__ == "__main__":
