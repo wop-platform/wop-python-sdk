@@ -39,6 +39,28 @@ python -m build
 覆盖率门禁：CI 以 `--cov-fail-under=98` 强制**行与分支**同时 ≥ 98%，未达标即失败。
 门禁是下限不是目标——新增代码应按 100% 覆盖设计（负向分支同样要测到）。
 
+### API 快照（公共 API 门禁）
+
+`tests/api_snapshot.json` 是 `wop_sdk` **公共 API 面**的入库基线（模块/类/函数/
+常量的名称、签名、参数、注解、默认值、装饰器、基类、`__all__` 导出、docstring），
+由 griffe 纯静态分析生成，对齐 wop-typescript-sdk 的 api-extractor 快照门禁模式。
+CI（`ci.yml` 的 `api-snapshot` job）在每次 PR 上重生成快照并与入库基线做
+`git diff --exit-code`——**公共 API 变化必须显式更新快照才能过 CI**，防止无意识
+API 漂移。
+
+```bash
+# 校验（CI 同款命令；零漂移退出码 0）
+pip install 'griffe==1.14.0'   # 版本必须锁定，否则快照字节确定性被破坏
+python3 scripts/check-api-snapshot.py
+
+# 有意变更公共 API 后，显式更新基线并将快照随 PR 提交
+python3 scripts/check-api-snapshot.py --update
+```
+
+说明：快照已剔除与 API 面无关或环境相关的字段（git 信息、绝对路径、行号、
+内部 imports、单下划线私有成员），因此插入注释、移动代码位置、重命名私有符号
+不会触发门禁；新增/删除/修改公共符号（含签名与 docstring）则会。
+
 ## 4. 黄金向量纪律
 
 `tests/fixtures/crypto-vectors.json` 是协议正确性的**唯一锚**，与网关真源字节级一致，
@@ -85,7 +107,8 @@ fix(sm2): reject DER-encoded signature per F7
 ## 7. PR 流程
 
 - 目标分支 `main`；提交前本地跑完 §3 全部命令；
-- CI 必须全绿：3.9 / 3.12 双矩阵 + 覆盖率门禁（行+分支 ≥ 98%）+ 向量合规全绿；
+- CI 必须全绿：3.9 / 3.12 双矩阵 + 覆盖率门禁（行+分支 ≥ 98%）+ 向量合规全绿
+  + 公共 API 快照门禁（有意变更 API 时按 §3「API 快照」显式更新基线）；
 - 涉及 fixture 变更的 PR 必须在描述中附网关真源同步证据（commit/链接）；
 - 至少一名 reviewer 复核通过后合并；squash 合并，commit message 按 §6 规范。
 

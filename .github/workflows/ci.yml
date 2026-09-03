@@ -119,3 +119,21 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 scripts/check-equivalent-anchors.py
+
+  # 公共 API 快照门禁（对齐 wop-typescript-sdk 的 api-extractor 模式）：
+  # 公共 API 面变化必须显式更新 tests/api_snapshot.json 才能过 CI，防止无意识 API 漂移。
+  # griffe 纯静态分析，无需安装运行时依赖，秒级。
+  api-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # griffe 版本必须锁定：不同版本的序列化细节差异会污染快照字节确定性
+      - name: Install pinned griffe
+        run: pip install griffe==1.14.0
+      - name: API snapshot gate (regenerate to temp file, git diff --exit-code)
+        run: python3 scripts/check-api-snapshot.py
