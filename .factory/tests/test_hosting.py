@@ -167,6 +167,8 @@ class TestCodeupShapes:
         """类标 Link POST 失败 → 降级告警不冒泡（skills#12 审查收口：标记
         评论已承载状态机语义，Link 仅平台原生补充——对齐 _label_id 降级）。"""
         ad = self._ad({
+            # add 幂等预检（php#17）：无既有未 resolved 标记 → 发标记评论
+            ("POST", "/comments/list"): {"result": []},
             ("POST", "/changeRequests/3/comments"): {"result": {"id": "c1"}},
             ("GET", "/labels"): [{"name": "factory:needs-review", "id": 7}],
             # 故意不路由 POST .../labels → fake_req 抛 HostingError → 降级
@@ -239,6 +241,7 @@ class TestCodeupShapes:
         ad = self._ad({
             ("GET", "/labels"): {"result": [
                 {"id": "lbl-9", "name": "factory:needs-review"}]},
+            ("POST", "/comments/list"): {"result": []},
             # #66 标记模型：add 先发标记评论，类标 Link 为补充载体
             ("POST", "/comments"): {"success": True},
             ("POST", "/changeRequests/7/labels"): {"success": True}}, monkeypatch)
@@ -249,6 +252,39 @@ class TestCodeupShapes:
         assert marker[2]["resolved"] is False
         link = [s for s in ad.seen if s[0] == "POST" and "labels" in s[1]][0]
         assert link[2] == {"labelIdList": ["lbl-9"]}  # live 破案键名（labelIds 拒）
+
+    def test_pr_create_requires_base_fail_closed(self, monkeypatch):
+        """Codeup pr create 缺 --base fail-closed（web-tools#5 Sourcery）：
+        targetBranch 因仓而异（master/main 均有实仓），猜默认会静默落错
+        基线；显式 base 透传 targetBranch。"""
+        ad = self._ad({("POST", "/changeRequests"): {
+            "result": {"localId": 9, "detailUrl": "u"}}}, monkeypatch)
+        with pytest.raises(hosting.HostingError) as e:
+            ad.pr_create("br", "t", "b")
+        assert e.value.code == 2
+        assert "--base" in str(e.value)
+        assert ad.pr_create("br", "t", "b", base="release/x") == {
+            "number": 9, "url": "u"}
+        assert ad.seen[0][2]["targetBranch"] == "release/x"
+
+    def test_space_id_maps_path_namespace(self, monkeypatch, tmp_path):
+        """namespace = remote path 首段（php#17 Sourcery）：
+        gtsp/open-platform/<repo> 的中间层不是 namespace，旧 [1] 索引
+        永不命中 conf 键；单段 path（无 namespace 层）fail-closed。"""
+        conf = tmp_path / "spaces.conf"
+        conf.write_text("gtsp|SID-1\n", encoding="utf-8")
+        monkeypatch.setenv("YUNXIAO_ACCESS_TOKEN", "t")
+        monkeypatch.setenv("CODEUP_ORG_ID", "org")
+        monkeypatch.setenv("CODEUP_REPO_ID", "42")
+        monkeypatch.setenv("FACTORY_SPACES_CONF", str(conf))
+        monkeypatch.delenv("CODEUP_SPACE_ID", raising=False)
+        ad = hosting.CodeupAdapter()
+        ad._remote = lambda: ("610b3c9d", "gtsp/open-platform/gtsp-wop-gateway")
+        assert ad._space_id() == "SID-1"
+        ad._remote = lambda: ("610b3c9d", "plain-repo")
+        with pytest.raises(hosting.HostingError) as e:
+            ad._space_id()
+        assert e.value.code == 2
 
 
 class TestCodeupGaps:
@@ -312,6 +348,18 @@ class TestCodeupMarkerModel:
         assert not [s for s in ad.seen if s[0] == "PUT"]
         assert "幂等跳过" in capsys.readouterr().err
 
+    def test_add_idempotent_existing_marker(self, monkeypatch, capsys):
+        """add 幂等（php#17 Sourcery）：已有同名未 resolved 标记 → 跳过
+        POST 不堆重复；类标 Link 仍 best-effort（未路由路径走 _ad 兜底
+        空列表 → 降级告警，不影响 True 契约）。"""
+        ad = self._ad(monkeypatch, {False: [
+            {"id": "c-1", "content": "[factory:label:add] factory:needs-review"}]})
+        assert ad.pr_set_labels(7, add=["factory:needs-review"]) is True
+        posts = [s for s in ad.seen if s[0] == "POST"
+                 and s[1].endswith("/changeRequests/7/comments")]
+        assert not posts  # 未发新标记评论（幂等跳过）
+        assert "幂等跳过" in capsys.readouterr().err
+
     def test_pr_labels_merges_two_carriers(self, monkeypatch):
         """labels = 类标 Link ∪ 未 resolved 标记（两载体合并去重）。"""
         ad = self._ad(monkeypatch, {False: [
@@ -365,6 +413,17 @@ class TestCodeupMarkerModel:
         assert out["review"] != "changes_requested"  # 载体缺席不得误报打回
         assert "降级空集" in capsys.readouterr().err
 
+    def test_marker_label_prefix_only_returns_empty(self, monkeypatch):
+        """CodeRabbit wop-skills#14：标记评论恰为前缀/前缀+空白时切片为空，
+        旧实现 splitlines()[0] 抛 IndexError（平台开放输入不可约束）——
+        空标记按无标记处理，不越过 HostingError 边界。"""
+        ad = self._ad(monkeypatch, {})
+        assert ad._marker_label("[factory:label:add] ") == ""
+        assert ad._marker_label("[factory:label:add]") == ""
+        # 常规形态不回归
+        assert ad._marker_label(
+            "[factory:label:add] factory:needs-review") == "factory:needs-review"
+
     def test_label_history_resolved_does_not_decrease(self, monkeypatch):
         """轮次语义：resolved 不减计数——全部 add 标记都计入事件流。"""
         ad = self._ad(monkeypatch, {
@@ -373,6 +432,25 @@ class TestCodeupMarkerModel:
         hist = ad.label_history(7)
         assert hist == [{"op": "add", "label": "factory:needs-fix"},
                         {"op": "add", "label": "factory:needs-fix"}]
+
+    def test_label_history_skips_empty_label_markers(self, monkeypatch):
+        """CodeRabbit #119：前缀-only 评论 _marker_label 返回 ""——
+        label_history 不得产出 {"op": "add", "label": ""} 无效事件。"""
+        ad = self._ad(monkeypatch, {False: [
+            {"id": "c-3", "content": "[factory:label:add] "},
+            {"id": "c-4", "content": "[factory:label:add] factory:needs-fix"}]})
+        hist = ad.label_history(7)
+        assert hist == [{"op": "add", "label": "factory:needs-fix"}]
+
+    def test_label_history_ignores_changes_requested_markers(self, monkeypatch):
+        """输入面守卫：#119 walrus 版若删 startswith 过滤（M2 变异），
+        _marker_comments 收的 changes-requested 评论会被 _marker_label 盲切
+        成垃圾 label——label_history 只认 add 前缀，changes-req 评论不产事件。"""
+        ad = self._ad(monkeypatch, {False: [
+            {"id": "c-5", "content": "[factory:changes-requested] 理由"},
+            {"id": "c-6", "content": "[factory:label:add] factory:needs-fix"}]})
+        hist = ad.label_history(7)
+        assert hist == [{"op": "add", "label": "factory:needs-fix"}]
 
     def test_changes_requested_gesture_maps_review(self, monkeypatch):
         """[factory:changes-requested] 评论 → changes_requested（无
