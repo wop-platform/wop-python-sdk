@@ -105,8 +105,8 @@
       "id": "B-105",
       "description": "破坏摘要头合同：alg 与 hex 间恰一空格变双空格（D2/F4：build/check roundtrip 必炸）",
       "target": "src/wop_sdk/digest.py",
-      "find": "    return \"%s %s\" % (suite.digest_tag, compute_digest(suite, body).hex())",
-      "replace": "    return \"%s  %s\" % (suite.digest_tag, compute_digest(suite, body).hex())",
+      "find": "    return f\"{suite.digest_tag} {compute_digest(suite, body).hex()}\"",
+      "replace": "    return f\"{suite.digest_tag}  {compute_digest(suite, body).hex()}\"",
       "gate": "tests",
       "expect_block": true
     },
