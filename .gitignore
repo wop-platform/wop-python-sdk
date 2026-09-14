@@ -22,3 +22,6 @@ venv/
 .factory/prompts/__pycache__/
 .factory/feedback-log.jsonl
 .factory/upstream-lock.json
+
+# Mac
+.DS_Store
