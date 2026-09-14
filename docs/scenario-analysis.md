@@ -1,6 +1,6 @@
 # WOP 商户 SDK 使用场景分析与测试用例矩阵
 
-> 版本：2026-08-29 · 依据：`wop-specs/sdk/wop-sdk-spec.md`（v1.0-ratified + 附录 D1–D5）
+> 版本：2026-08-29 · 依据：`wop-specs/docs/specs/wop-sdk-spec.md`（v1.0-ratified + 附录 D1–D5）
 > 范围：wop-python-sdk 协议核心 + HTTP 适配层，从**商户接入生命周期**出发推导测试面，
 > 并映射到现有测试 / Gherkin 场景（`tests/features/`）/ 变异测试防线。
 

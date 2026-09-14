@@ -4,7 +4,7 @@
 
 本仓库是 WOP 网关**商户侧官方 Python SDK**（`wop-python-sdk`），实现协议核心（套件解析 /
 结构化签名 / 内容摘要 / L2 数字信封 / 验签解密）与可插拔 HTTP 适配层。所有协议行为
-以 [WOP 商户 SDK 规格 v1.0（ratified）](https://github.com/wop-platform/wop-specs/blob/main/sdk/wop-sdk-spec.md)
+以 [WOP 商户 SDK 规格 v1.0（ratified）](https://github.com/wop-platform/wop-specs/blob/main/docs/specs/wop-sdk-spec.md)
 为准（功能面 F1–F9、验收 A1–A7、工程约定 §4）；规格与本实现冲突时，先在规格仓库
 提出议题，再动代码。
 
