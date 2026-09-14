@@ -413,7 +413,7 @@ class CodeupAdapter:
             pass
         org, path = self._remote()
         if org and path and "/" in path and ns_map:
-            # namespace = path 首段（gtsp/open-platform/<repo> → gtsp）；
+            # namespace = path 首段（org/group/<repo> → group）；
             # 旧 [1] 取到中间层 open-platform，映射永不命中（php#17）
             ns = path.split("/")[0]
             if ns in ns_map:

@@ -1,6 +1,6 @@
 # MISSION — wop-python-sdk 工厂使命（治理文件）
 
-> 状态：S0 草稿 v0.1（2026-08-29，移植自 gtsp-wop-gateway .factory，上游 awesome-rules）。
+> 状态：S0 草稿 v0.1（2026-08-29，移植自 内部网关仓 .factory，上游 awesome-rules）。
 > 本文件属于治理层：**工厂永不可修改**（铁律 3，由 `.factory/guard.py` 机械化执行）。
 > 平台：GitHub——issue = GitHub issue，PR = pull request；
 > 经 `.factory/forge` 适配（ADR-007）。
