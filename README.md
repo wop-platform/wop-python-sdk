@@ -4,6 +4,8 @@
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/wop-platform/wop-python-sdk/actions/workflows/ci.yml) [![Gherkin](https://img.shields.io/badge/bdd-21%20scenarios-orange)](tests/features/wop_merchant.feature) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/wop-platform/wop-python-sdk?utm_source=oss&utm_medium=github&utm_campaign=wop-platform%2Fwop-python-sdk&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 
+> **WOP · 万联易达开放平台** 官方 Python SDK —— 协议与黄金向量真源：[wop-specs](https://github.com/wop-platform/wop-specs)
+
 WOP 网关商户侧官方 Python 客户端库：封装协议核心（套件解析 / 结构化签名 / 内容摘要 /
 L2 数字信封 / 验签解密）与可插拔 HTTP 适配层，使商户无需理解 canonicalRequest、
 算法套件推导与线上字节格式即可安全对接网关。
@@ -118,3 +120,15 @@ opaque 剥离签名/包装段），verify 方向 24 条冻结样本逐条对账�
 - **模糊**（依赖密钥参与，防 oracle，I7）：签名验证失败、解密失败——对外消息不区分
   tag 失败 / 密钥不符等原因细节；DEK 载荷（解包后明文）结构畸形除 alg 跨族外一律
   归入解密失败（interop 合同 n13 / 故障注入手册 P3）。
+
+---
+
+## 🧩 WOP 生态导航 | Ecosystem
+
+| 类别 | 组件 |
+|------|------|
+| 协议与向量真源 | [wop-specs](https://github.com/wop-platform/wop-specs) —— crypto-strategy-spec · wop-sdk-spec · 黄金测试向量 |
+| 官方 SDK（六语言） | [Java](https://github.com/wop-platform/wop-java-sdk) · [Go](https://github.com/wop-platform/wop-go-sdk) · [Python](https://github.com/wop-platform/wop-python-sdk) · [PHP](https://github.com/wop-platform/wop-php-sdk) · [.NET](https://github.com/wop-platform/wop-dotnet-sdk) · [TypeScript](https://github.com/wop-platform/wop-typescript-sdk) |
+| 浏览器工作台 | [wop-web-tools](https://github.com/wop-platform/wop-web-tools) —— 密钥生成 · 报文联调 · 国密 · 六语言代码片段 |
+| Agent 技能包 | [wop-skills](https://github.com/wop-platform/wop-skills) —— 零代码调用 · 联调对拍 · 62 错误码排错 |
+| 平台服务（企业内部） | 统一接入网关 · 核心逻辑服务 · 回调服务 · 开发者门户 · 文档中心 |
