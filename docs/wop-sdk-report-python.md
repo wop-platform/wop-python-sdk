@@ -2,7 +2,7 @@
 
 - 仓库：`github.com/wop-platform/wop-python-sdk`（分支 main，共 12 commits，未推送）
 - 任务：`/tmp/wop-task-python.md` + 公共段 `/tmp/wop-sdk-common.md`
-- 真源：`gtsp-wop-gateway/docs/wop-sdk-spec.md`（v1.0-ratified）、`docs/crypto-strategy-spec.md`（v0.3-reviewed）、
+- 真源：`wop-specs/docs/specs/wop-sdk-spec.md`（v1.0-ratified）、`docs/crypto-strategy-spec.md`（v0.3-reviewed）、
   `docs/crypto-vectors.json`（字节级拷贝至 `tests/fixtures/crypto-vectors.json`，`cmp` 验证一致）
 - 环境：Python 3.9.6（macOS ARM64）；cryptography 46.0.3、gmssl 3.2.2、pytest 8.4.2、coverage 7.x
 
