@@ -8,14 +8,17 @@
 """
 import json
 import os
+import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Union
 
 from .canonical import build_canonical, canonical_headers
 from .digest import build_digest_header, verify_digest_header
 from .encoding import b64url_encode
 from .envelope import open_l2, seal_l2
+from .config._models import WopSdkConfig
+from .config._validator import validate_api_path
 from .errors import (
     ConfigurationError,
     DecryptError,
@@ -25,8 +28,11 @@ from .errors import (
     SignatureVerifyError,
     SuiteParseError,
     UnsupportedSuiteError,
+    WopGatewayResponseError,
     WopSdkError,
 )
+from .transport_discovery import discover_transport
+from .transports import Transport, send_draft
 from .keys import (
     load_rsa_private_key,
     load_rsa_public_key,
@@ -58,6 +64,14 @@ class WopConfig:
     platform_public_key: str
     gateway_base_url: Optional[str] = None
 
+    def __repr__(self) -> str:
+        # K16：凭证字段打码
+        return (
+            f"WopConfig(app_key={self.app_key!r}, suite={self.suite!r}, "
+            f"merchant_private_key=****, platform_public_key=****, "
+            f"gateway_base_url={self.gateway_base_url!r})"
+        )
+
 
 @dataclass
 class RequestDraft:
@@ -85,7 +99,10 @@ class VerifyResult:
 
 
 class WopClient:
-    """协议核心客户端（纯函数式产出，无连接状态）。"""
+    """协议核心客户端 + 一站式 execute 入口（config-spec K17）。"""
+
+    _default_lock = threading.Lock()
+    _default_client: Optional["WopClient"] = None
 
     def __init__(self, config: WopConfig, csprng: Csprng = os.urandom):
         if not config.app_key or not config.app_key.strip():
@@ -114,10 +131,47 @@ class WopClient:
                 public_xy_hex=platform_pub.xy_hex, user_id=PLATFORM_INBOUND_USER_ID
             )
         self._csprng = csprng
+        self._sdk_config: Optional[WopSdkConfig] = None
+        self._transport: Optional[Transport] = None
+
+    @classmethod
+    def default_client(cls) -> "WopClient":
+        """惰性：load_default → 传输发现 → 构造；并发首调单实例（K15）。"""
+        with cls._default_lock:
+            if cls._default_client is None:
+                from .config import load_default
+
+                cls._default_client = cls.from_config(load_default())
+            return cls._default_client
+
+    @classmethod
+    def from_config(cls, sdk_config: WopSdkConfig, csprng: Csprng = os.urandom) -> "WopClient":
+        """显式配置构造（不进默认实例缓存，K11）。"""
+        transport = sdk_config.transport or discover_transport()
+        core = WopConfig(
+            app_key=sdk_config.app_key,
+            suite=sdk_config.suite,
+            merchant_private_key=sdk_config.merchant_private_key,
+            platform_public_key=sdk_config.platform_public_key,
+            gateway_base_url=sdk_config.server_root,
+        )
+        client = cls(core, csprng=csprng)
+        client._sdk_config = sdk_config
+        client._transport = transport
+        return client
+
+    @classmethod
+    def reset_default(cls) -> None:
+        """丢弃默认实例；须先 clear_cache() 再调用（K26）。"""
+        with cls._default_lock:
+            cls._default_client = None
 
     @property
     def suite(self) -> Suite:
         return self._suite
+
+    def __repr__(self) -> str:
+        return f"WopClient(suite={self._suite.security_req!r}, app_key={self._config.app_key!r})"
 
     # ---------- 出向 ----------
 
@@ -223,6 +277,35 @@ class WopClient:
     ) -> VerifyResult:
         """校验平台回调（URI 取回调 path，方法恒 POST）。"""
         return self.verify_response(headers, body, callback_path, method="POST")
+
+    def execute(
+        self,
+        method: str,
+        path: str,
+        body: Optional[Union[bytes, str, dict]] = None,
+        *,
+        level: str = "L0",
+    ) -> VerifyResult:
+        """一站式：签名 → 发送 → 非 2xx 拦截 → 验签解密（§2 execute 语义）。"""
+        if self._transport is None or self._sdk_config is None:
+            raise ConfigurationError("execute 需要经 from_config/default_client 构造的客户端")
+        validate_api_path(path)
+        draft = self.build_request(
+            method,
+            path,
+            body,
+            level=level,
+            expired_seconds=self._sdk_config.expired_seconds,
+        )
+        response = send_draft(self._transport, self._sdk_config.server_root, draft)
+        if not 200 <= response.status < 300:
+            body_len = len(response.body or b"")
+            raise WopGatewayResponseError(
+                f"WOP 网关返回 HTTP {response.status}（响应体 {body_len} 字节）",
+                response.status,
+                response.body,
+            )
+        return self.verify_response(response.headers, response.body, path, method=draft.method)
 
     def _verify_flow(
         self, lower: Dict[str, str], body: bytes, path: str, method: str, query_string: str

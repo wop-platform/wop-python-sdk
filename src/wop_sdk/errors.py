@@ -17,6 +17,7 @@ ERROR_CATEGORIES: frozenset[str] = frozenset(
         "consistency",    # 一致性校验：dek alg 与套件族不符（I3）
         "signature",      # 验签失败（I7：对外模糊）
         "decrypt",        # 解密失败（I7：对外模糊）
+        "system",         # 系统类：网关 HTTP 非 2xx 等
     }
 )
 
@@ -89,3 +90,14 @@ class DekConsistencyError(WopSdkError):
     """一致性类：DEK alg 与套件族不符。公开映射知识，明确（D8/I3）。"""
 
     category = "consistency"
+
+
+class WopGatewayResponseError(WopSdkError):
+    """网关 HTTP 非 2xx 响应（config-spec §7.5 K5）；含 status_code 与 body 访问器。"""
+
+    category = "system"
+
+    def __init__(self, message: str, status_code: int, body: bytes):
+        super().__init__(message)
+        self.status_code = status_code
+        self.body = body
