@@ -39,7 +39,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE_PATH = os.path.join(HERE, "fixtures", "interop-cases.json")
 
 # 真源 wop-specs/interop/v1/interop-cases.json 的 sha256（字节副本哨兵）
-EXPECTED_SHA256 = "c920ca1a93ccb3899a659f59fed6ec4652cf9e1b3b58bbdac23c45ac3ed2353e"
+EXPECTED_SHA256 = "9a51486d8d00df45b60001515acce7eb89b731876233b9e39cd8b141b1af1d42"
 EXPECTED_FORMAT = "wop-interop-1"
 
 with open(FIXTURE_PATH, "r", encoding="utf-8") as _f:
