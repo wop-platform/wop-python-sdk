@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
-from ..transports import Transport
+if TYPE_CHECKING:
+    from ..transports import Transport
 
 DEFAULT_EXPIRED_SECONDS = 1800
 
@@ -37,7 +38,7 @@ class WopSdkConfig:
     backup_server_roots: Tuple[str, ...] = field(default_factory=tuple)
     expired_seconds: int = DEFAULT_EXPIRED_SECONDS
     http_client: HttpClientSettings = field(default_factory=HttpClientSettings)
-    transport: Optional[Transport] = None
+    transport: Optional["Transport"] = None
 
     def __repr__(self) -> str:
         # K16：日志/repr 私钥打码
@@ -66,7 +67,7 @@ class WopSdkConfigBuilder:
         self._backup_server_roots: Tuple[str, ...] = tuple()
         self._expired_seconds: int = DEFAULT_EXPIRED_SECONDS
         self._http_client: HttpClientSettings = HttpClientSettings()
-        self._transport: Optional[Transport] = None
+        self._transport: Optional["Transport"] = None
 
     def app_key(self, value: str) -> "WopSdkConfigBuilder":
         self._app_key = value
@@ -100,7 +101,7 @@ class WopSdkConfigBuilder:
         self._http_client = value
         return self
 
-    def transport(self, value: Optional[Transport]) -> "WopSdkConfigBuilder":
+    def transport(self, value: Optional["Transport"]) -> "WopSdkConfigBuilder":
         self._transport = value
         return self
 

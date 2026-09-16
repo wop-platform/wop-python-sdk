@@ -26,6 +26,9 @@ def discover_transport() -> Transport:
                 f"WOP_TRANSPORT={explicit!r} 无匹配传输，可用: {names}"
             )
         return transport()
+    if "urllib" in available:
+        # P0 默认适配器：peer 依赖并存时仍优先 stdlib urllib（附录 D）
+        return available["urllib"]()
     if len(available) == 1:
         return next(iter(available.values()))()
     names = ", ".join(sorted(available))

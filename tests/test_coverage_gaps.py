@@ -250,7 +250,7 @@ class TestSm2CryptoGaps:
 class TestErrorCategories:  # spec:2.2 category 闭集与 I7 文案纪律
     def test_category_closed_set_exact(self):  # spec:2.2 否定式：多/少任一值即炸
         assert ERROR_CATEGORIES == frozenset(
-            {"configuration", "parse", "unsupported", "integrity", "consistency", "signature", "decrypt"}
+            {"configuration", "parse", "unsupported", "integrity", "consistency", "signature", "decrypt", "system"}
         )
 
     def test_every_error_class_maps_to_expected_category(self):  # spec:2.2 逐类枚举

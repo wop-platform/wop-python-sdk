@@ -11,13 +11,16 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Union
+
+if TYPE_CHECKING:
+    from .config._models import WopSdkConfig
+    from .transports import Transport
 
 from .canonical import build_canonical, canonical_headers
 from .digest import build_digest_header, verify_digest_header
 from .encoding import b64url_encode
 from .envelope import open_l2, seal_l2
-from .config._models import WopSdkConfig
 from .config._validator import validate_api_path
 from .errors import (
     ConfigurationError,
@@ -31,8 +34,6 @@ from .errors import (
     WopGatewayResponseError,
     WopSdkError,
 )
-from .transport_discovery import discover_transport
-from .transports import Transport, send_draft
 from .keys import (
     load_rsa_private_key,
     load_rsa_public_key,
@@ -131,8 +132,8 @@ class WopClient:
                 public_xy_hex=platform_pub.xy_hex, user_id=PLATFORM_INBOUND_USER_ID
             )
         self._csprng = csprng
-        self._sdk_config: Optional[WopSdkConfig] = None
-        self._transport: Optional[Transport] = None
+        self._sdk_config: Optional["WopSdkConfig"] = None
+        self._transport: Optional["Transport"] = None
 
     @classmethod
     def default_client(cls) -> "WopClient":
@@ -145,8 +146,10 @@ class WopClient:
             return cls._default_client
 
     @classmethod
-    def from_config(cls, sdk_config: WopSdkConfig, csprng: Csprng = os.urandom) -> "WopClient":
+    def from_config(cls, sdk_config: "WopSdkConfig", csprng: Csprng = os.urandom) -> "WopClient":
         """显式配置构造（不进默认实例缓存，K11）。"""
+        from .transport_discovery import discover_transport
+
         transport = sdk_config.transport or discover_transport()
         core = WopConfig(
             app_key=sdk_config.app_key,
@@ -297,6 +300,8 @@ class WopClient:
             level=level,
             expired_seconds=self._sdk_config.expired_seconds,
         )
+        from .transports import send_draft
+
         response = send_draft(self._transport, self._sdk_config.server_root, draft)
         if not 200 <= response.status < 300:
             body_len = len(response.body or b"")

@@ -111,12 +111,8 @@ def _read_http_client(value: Any) -> HttpClientSettings:
         return HttpClientSettings()
     if not isinstance(value, dict):
         raise ConfigurationError("配置字段 httpClient 类型非法: 须为对象")
-    extra = set(value.keys()) - _ALLOW_HTTP_CLIENT
-    if extra:
-        # 未知子字段忽略
-        pass
     for nested_key, nested_value in value.items():
-        if nested_key not in _ALLOW_HTTP_CLIENT:
+        if nested_key not in _ALLOWED_HTTP_CLIENT:
             continue
         if isinstance(nested_value, dict):
             raise ConfigurationError("配置字段 httpClient 类型非法: 不支持更深嵌套")
