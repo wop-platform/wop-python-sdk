@@ -130,10 +130,14 @@ class TestBuildRequestL0:
         draft = rsa_client.build_request("POST", PATH, b"x", expired_seconds=60)
         assert draft.headers["x-wop-sign"].split(" ")[1].split("/")[:2] == ["v1", "60"]
 
-    def test_deterministic_replay(self, rsa_client):  # spec:§2 幂等
+    def test_deterministic_replay(self, rsa_client, monkeypatch):  # spec:§2 幂等
+        # 附录 I/I3：缺省 requestId 属 CSPRNG 豁免项；注入固定生成器后全头可重放
+        import wop_sdk.client as client_mod
+        monkeypatch.setattr(client_mod, "request_id_generator", lambda: "fixedreq" + "0" * 26)
         d1 = rsa_client.build_request("POST", PATH, b"same")
         d2 = rsa_client.build_request("POST", PATH, b"same")
         assert d1.headers == d2.headers and d1.wire_body == d2.wire_body
+        assert d1.headers["x-wop-request-id"] == "fixedreq" + "0" * 26
 
     def test_extra_headers_override(self, rsa_client):
         draft = rsa_client.build_request(
@@ -366,3 +370,63 @@ class TestVerifyResponseL2:
         bad[-3] ^= 0x01
         r = sm_client.verify_response(headers, bytes(bad), PATH)
         assert not r.ok and r.reason == "内容摘要不匹配"
+
+
+class TestRequestIdPassthrough:  # spec:wop-sdk-spec 附录 I（x-wop-request-id）
+    """附录 I 三条对齐重点：I1 恒不入签、I2 值校验（控制字符/UTF-8 字节长）、
+    I3 缺省生成（UUID 去连字符小写 32 hex）与日志义务。"""
+
+    def test_explicit_value_trimmed_upstream(self, rsa_client):
+        draft = rsa_client.build_request("GET", "/q", request_id="  req-001  ")
+        assert draft.headers["x-wop-request-id"] == "req-001"  # trim 后原值，除 trim 外禁止改写
+
+    def test_never_signed_and_sign_bytes_unchanged(self, rsa_client):  # spec:附录 I/I1
+        with_id = rsa_client.build_request("GET", "/q", request_id="req-001")
+        without = rsa_client.build_request("GET", "/q")
+        signed_names = with_id.headers["x-wop-sign"].split("/")[2].split(";")
+        assert "x-wop-request-id" not in signed_names
+        assert with_id.headers["x-wop-sign"] == without.headers["x-wop-sign"]
+
+    def test_default_generated_uuid32_and_fresh_per_call(self, rsa_client):  # spec:附录 I/I3
+        import re
+
+        a = rsa_client.build_request("GET", "/q")
+        b = rsa_client.build_request("GET", "/q")
+        assert re.fullmatch(r"[0-9a-f]{32}", a.headers["x-wop-request-id"])
+        assert re.fullmatch(r"[0-9a-f]{32}", b.headers["x-wop-request-id"])
+        assert a.headers["x-wop-request-id"] != b.headers["x-wop-request-id"]
+        # 空格 trim 后为空 → 视为未设置，走缺省生成（\t/\n 属控制字符，trim 前扫描即拒）
+        blank = rsa_client.build_request("GET", "/q", request_id="   ")
+        assert re.fullmatch(r"[0-9a-f]{32}", blank.headers["x-wop-request-id"])
+
+    @pytest.mark.parametrize(
+        "bad",
+        ["a\nb", "a\rb", "a\x00b", "a\x7fb", "a\tb", "\nlead", "trail\r", " \t ", "\x00", "\x7f"],
+    )
+    def test_control_chars_rejected_pre_trim(self, rsa_client, bad):  # spec:附录 I/I2
+        with pytest.raises(ConfigurationError, match="控制字符"):
+            rsa_client.build_request("GET", "/q", request_id=bad)
+
+    def test_length_measured_in_utf8_bytes(self, rsa_client):  # spec:附录 I/I2
+        # 128 ASCII 字节 OK；129 拒；42 中文 = 126 字节 OK；43 = 129 字节拒
+        ok = rsa_client.build_request("GET", "/q", request_id="x" * 128)
+        assert ok.headers["x-wop-request-id"] == "x" * 128
+        with pytest.raises(ConfigurationError, match="UTF-8 字节长度不能超过 128（实际 129）"):
+            rsa_client.build_request("GET", "/q", request_id="x" * 129)
+        ok_cjk = rsa_client.build_request("GET", "/q", request_id="标" * 42)
+        assert ok_cjk.headers["x-wop-request-id"] == "标" * 42
+        with pytest.raises(ConfigurationError, match="UTF-8 字节长度不能超过 128（实际 129）"):
+            rsa_client.build_request("GET", "/q", request_id="标" * 43)
+
+    def test_outbound_log_contains_final_value(self, rsa_client, caplog):  # spec:附录 I/I3 日志义务
+        import logging
+
+        with caplog.at_level(logging.INFO, logger="wop_sdk.outbound"):
+            rsa_client.build_request("GET", "/q", request_id="logreq001")
+        lines = [r.getMessage() for r in caplog.records]
+        assert any("x-wop-request-id=logreq001" in m and "GET /q" in m for m in lines)
+
+    def test_injected_generator_bypasses_csprng_stream(self, rsa_client, monkeypatch):  # spec:I3 注入锚
+        monkeypatch.setattr(client_mod, "request_id_generator", lambda: "gen-anchor-001")
+        draft = rsa_client.build_request("POST", PATH, b"msg", level="L2")
+        assert draft.headers["x-wop-request-id"] == "gen-anchor-001"

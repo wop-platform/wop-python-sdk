@@ -222,9 +222,12 @@ class TestInteropConformanceBuild:  # spec:interop-v1 消费要求 2
                 got, want = _strip_dek_value(got), _strip_dek_value(want)
             assert got == want, f"头 {name} 不一致"
         # 头集合哨兵：协议头（x-wop-*）恰为 fixture 声明集合；
+        # x-wop-request-id 是规格附录 I 的可选透传头（恒不入签、网关日志关联用），
+        # 不属于 interop 冻结的协议头合同（fixture sha256 钉死不可改），比对前剥离；
         # 签名集外仅允许本仓出向便利头 content-type（不参与签名，不影响协议编排）
-        assert {k for k in draft.headers if k.startswith("x-wop-")} == set(expected["headers"])
-        assert set(draft.headers) - set(expected["headers"]) <= {"content-type"}
+        protocol_headers = {k: v for k, v in draft.headers.items() if k != "x-wop-request-id"}
+        assert {k for k in protocol_headers if k.startswith("x-wop-")} == set(expected["headers"])
+        assert set(protocol_headers) - set(expected["headers"]) <= {"content-type"}
 
 
 class TestInteropConformanceVerify:  # spec:interop-v1 消费要求 3

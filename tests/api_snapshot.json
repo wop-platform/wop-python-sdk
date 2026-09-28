@@ -1750,10 +1750,10 @@
                 "parsed": [
                   {
                     "kind": "text",
-                    "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002"
+                    "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002\nrequest_id \u4e3a\u5546\u6237\u8bf7\u6c42\u6807\u8bc6\uff08\u9644\u5f55 I\uff1ax-wop-request-id \u900f\u4f20\u5934\uff0c\u6052\u4e0d\u5165\u7b7e\uff1b\n\u987b\u4e3a\u4e0d\u542b\u4e2a\u4eba\u6570\u636e\u7684\u4e0d\u900f\u660e\u5173\u8054\u6807\u8bc6\uff09\uff1b\u672a\u4f20/\u7a7a\u767d \u2192 \u7f3a\u7701\u751f\u6210 UUID \u53bb\u8fde\u5b57\u7b26\n\uff08\u5934\u6052\u5b58\u5728\uff09\uff0c\u663e\u5f0f\u4f20\u503c trim \u540e\u539f\u503c\u4e0a\u884c\uff0c\u63a7\u5236\u5b57\u7b26\uff08trim \u524d\u626b\u63cf\uff09\u4e0e\u8d85\u957f\n\uff08trim \u540e UTF-8 \u5b57\u8282 > 128\uff09\u6784\u9020\u5373\u62d2\u3002"
                   }
                 ],
-                "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002"
+                "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002\nrequest_id \u4e3a\u5546\u6237\u8bf7\u6c42\u6807\u8bc6\uff08\u9644\u5f55 I\uff1ax-wop-request-id \u900f\u4f20\u5934\uff0c\u6052\u4e0d\u5165\u7b7e\uff1b\n\u987b\u4e3a\u4e0d\u542b\u4e2a\u4eba\u6570\u636e\u7684\u4e0d\u900f\u660e\u5173\u8054\u6807\u8bc6\uff09\uff1b\u672a\u4f20/\u7a7a\u767d \u2192 \u7f3a\u7701\u751f\u6210 UUID \u53bb\u8fde\u5b57\u7b26\n\uff08\u5934\u6052\u5b58\u5728\uff09\uff0c\u663e\u5f0f\u4f20\u503c trim \u540e\u539f\u503c\u4e0a\u884c\uff0c\u63a7\u5236\u5b57\u7b26\uff08trim \u524d\u626b\u63cf\uff09\u4e0e\u8d85\u957f\n\uff08trim \u540e UTF-8 \u5b57\u8282 > 128\uff09\u6784\u9020\u5373\u62d2\u3002"
               },
               "is_class_private": false,
               "is_deprecated": false,
@@ -1912,6 +1912,24 @@
                   "default": "None",
                   "kind": "keyword-only",
                   "name": "nonce"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprSubscript",
+                    "left": {
+                      "cls": "ExprName",
+                      "member": "build_request",
+                      "name": "Optional"
+                    },
+                    "slice": {
+                      "cls": "ExprName",
+                      "member": "build_request",
+                      "name": "str"
+                    }
+                  },
+                  "default": "None",
+                  "kind": "keyword-only",
+                  "name": "request_id"
                 }
               ],
               "path": "wop_sdk.client.WopClient.build_request",
@@ -2071,6 +2089,24 @@
                   "default": "'L0'",
                   "kind": "keyword-only",
                   "name": "level"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprSubscript",
+                    "left": {
+                      "cls": "ExprName",
+                      "member": "execute",
+                      "name": "Optional"
+                    },
+                    "slice": {
+                      "cls": "ExprName",
+                      "member": "execute",
+                      "name": "str"
+                    }
+                  },
+                  "default": "None",
+                  "kind": "keyword-only",
+                  "name": "request_id"
                 }
               ],
               "path": "wop_sdk.client.WopClient.execute",
@@ -2942,6 +2978,23 @@
           "runtime": true,
           "target_path": "wop_sdk.keys.load_sm2_public_key"
         },
+        "logging": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "logging",
+          "path": "wop_sdk.client.logging",
+          "runtime": true,
+          "target_path": "logging"
+        },
         "open_l2": {
           "analysis": "static",
           "inherited": false,
@@ -2992,6 +3045,138 @@
           "path": "wop_sdk.client.parse_suite",
           "runtime": true,
           "target_path": "wop_sdk.suites.parse_suite"
+        },
+        "request_id_generator": {
+          "analysis": "static",
+          "annotation": {
+            "cls": "ExprSubscript",
+            "left": {
+              "cls": "ExprName",
+              "member": null,
+              "name": "Callable"
+            },
+            "slice": {
+              "cls": "ExprTuple",
+              "elements": [
+                {
+                  "cls": "ExprList",
+                  "elements": []
+                },
+                {
+                  "cls": "ExprName",
+                  "member": null,
+                  "name": "str"
+                }
+              ],
+              "implicit": true
+            }
+          },
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": false,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "attribute",
+          "labels": [
+            "module-attribute"
+          ],
+          "name": "request_id_generator",
+          "path": "wop_sdk.client.request_id_generator",
+          "runtime": true,
+          "value": {
+            "body": {
+              "cls": "ExprAttribute",
+              "values": [
+                {
+                  "arguments": [],
+                  "cls": "ExprCall",
+                  "function": {
+                    "cls": "ExprAttribute",
+                    "values": [
+                      {
+                        "cls": "ExprName",
+                        "member": null,
+                        "name": "uuid"
+                      },
+                      {
+                        "cls": "ExprName",
+                        "member": null,
+                        "name": "uuid4"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "cls": "ExprName",
+                  "member": null,
+                  "name": "hex"
+                }
+              ]
+            },
+            "cls": "ExprLambda",
+            "parameters": []
+          }
+        },
+        "resolve_request_id": {
+          "analysis": "static",
+          "decorators": [],
+          "docstring": {
+            "parsed": [
+              {
+                "kind": "text",
+                "value": "\u9644\u5f55 I/I2 requestId \u6821\u9a8c\uff08\u6784\u9020\u5373\u62d2\uff0cconfiguration \u7c7b\uff09\u3002\n\n1. trim \u524d\u6309**\u539f\u503c**\u9010\u5b57\u7b26\u626b\u63cf\u63a7\u5236\u5b57\u7b26\uff08< 0x20 \u6216 == 0x7F\uff0c\u542b CR/LF/NUL/DEL\uff09\u2014\u2014\u9632\u5934\u6ce8\u5165\uff1b\n2. trim\uff08G2 TrimAll \u540c\u96c6\uff09\u540e\u4e3a\u7a7a \u2192 \u89c6\u4e3a\u672a\u8bbe\u7f6e\uff08\u8fd4\u56de None\uff0c\u8d70\u7f3a\u7701\u751f\u6210\uff09\uff1b\n3. trim \u540e UTF-8 \u7f16\u7801\u5b57\u8282 > 128 \u2192 \u62d2\uff08\u7f51\u5173 header \u7f13\u51b2\u6309\u5b57\u8282\u8ba1\uff09\u3002\n\u8fd4\u56de trim \u540e\u4e0a\u884c\u503c\uff1bNone = \u672a\u8bbe\u7f6e\u3002"
+              }
+            ],
+            "value": "\u9644\u5f55 I/I2 requestId \u6821\u9a8c\uff08\u6784\u9020\u5373\u62d2\uff0cconfiguration \u7c7b\uff09\u3002\n\n1. trim \u524d\u6309**\u539f\u503c**\u9010\u5b57\u7b26\u626b\u63cf\u63a7\u5236\u5b57\u7b26\uff08< 0x20 \u6216 == 0x7F\uff0c\u542b CR/LF/NUL/DEL\uff09\u2014\u2014\u9632\u5934\u6ce8\u5165\uff1b\n2. trim\uff08G2 TrimAll \u540c\u96c6\uff09\u540e\u4e3a\u7a7a \u2192 \u89c6\u4e3a\u672a\u8bbe\u7f6e\uff08\u8fd4\u56de None\uff0c\u8d70\u7f3a\u7701\u751f\u6210\uff09\uff1b\n3. trim \u540e UTF-8 \u7f16\u7801\u5b57\u8282 > 128 \u2192 \u62d2\uff08\u7f51\u5173 header \u7f13\u51b2\u6309\u5b57\u8282\u8ba1\uff09\u3002\n\u8fd4\u56de trim \u540e\u4e0a\u884c\u503c\uff1bNone = \u672a\u8bbe\u7f6e\u3002"
+          },
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": false,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "function",
+          "name": "resolve_request_id",
+          "parameters": [
+            {
+              "annotation": {
+                "cls": "ExprSubscript",
+                "left": {
+                  "cls": "ExprName",
+                  "member": "resolve_request_id",
+                  "name": "Optional"
+                },
+                "slice": {
+                  "cls": "ExprName",
+                  "member": "resolve_request_id",
+                  "name": "str"
+                }
+              },
+              "default": null,
+              "kind": "positional or keyword",
+              "name": "raw"
+            }
+          ],
+          "path": "wop_sdk.client.resolve_request_id",
+          "returns": {
+            "cls": "ExprSubscript",
+            "left": {
+              "cls": "ExprName",
+              "member": "resolve_request_id",
+              "name": "Optional"
+            },
+            "slice": {
+              "cls": "ExprName",
+              "member": "resolve_request_id",
+              "name": "str"
+            }
+          },
+          "runtime": true
         },
         "seal_l2": {
           "analysis": "static",
@@ -3077,6 +3262,23 @@
           "path": "wop_sdk.client.time",
           "runtime": true,
           "target_path": "time"
+        },
+        "uuid": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "uuid",
+          "path": "wop_sdk.client.uuid",
+          "runtime": true,
+          "target_path": "uuid"
         },
         "validate_api_path": {
           "analysis": "static",

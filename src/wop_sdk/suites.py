@@ -11,6 +11,7 @@ from .errors import SuiteParseError, UnsupportedSuiteError
 
 # 密钥算法 → (族, RSA 位长)。SM2 族 key_bits=0。
 _KEY_ALGORITHMS = {
+    "RSA2048": ("RSA", 2048),
     "RSA3072": ("RSA", 3072),
     "RSA4096": ("RSA", 4096),
     "SM2": ("SM", 0),
@@ -23,7 +24,7 @@ _DIGEST_ALGORITHMS = {
 
 # 族 → 报文对称算法 / DEK 包装算法 / 签名算法名
 _FAMILY_MESSAGE_ALG = {"RSA": "AES-256-GCM", "SM": "SM4-GCM"}
-_FAMILY_KEY_WRAP = {3072: "RSA-3072-OAEP", 4096: "RSA-4096-OAEP"}
+_FAMILY_KEY_WRAP = {2048: "RSA-2048-OAEP", 3072: "RSA-3072-OAEP", 4096: "RSA-4096-OAEP"}
 _FAMILY_SIGN = {"RSA": "SHA256withRSA", "SM": "SM3withSM2"}
 
 
@@ -33,7 +34,7 @@ class Suite:
 
     security_req: str
     family: str  # "RSA" | "SM"
-    key_bits: int  # 3072 | 4096 | 0（SM2）
+    key_bits: int  # 2048 | 3072 | 4096 | 0（SM2）
     digest_alg: str  # "SHA256" | "SM3"
     digest_tag: str  # "sha-256" | "sm3"
     sign_alg: str

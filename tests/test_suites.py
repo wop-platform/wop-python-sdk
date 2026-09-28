@@ -63,7 +63,7 @@ class TestParseNegative:
     @pytest.mark.parametrize(
         "bad",
         [
-            "WOP-RSA2048-SHA256",  # 密钥算法不在列表
+            "WOP-RSA1024-SHA256",  # 密钥算法不在列表
             "WOP-ECDSA-SHA256",
             "WOP-RSA3072-SHA512",  # 摘要算法不在列表
             "WOP-SM2-SM4",
@@ -94,3 +94,19 @@ class TestSuiteObject:
 
     def test_unknown_family_has_no_rsa_key_bits(self):
         assert parse_suite("WOP-SM2-SM3").key_bits == 0
+
+
+class TestRsa2048Suite:  # spec:crypto-strategy-spec E1 扩展位（RSA2048 默认支持）
+    def test_parse_rsa2048(self):
+        s = parse_suite("WOP-RSA2048-SHA256")
+        assert s.family == "RSA"
+        assert s.key_bits == 2048
+        assert s.digest_alg == "SHA256"
+        assert s.digest_tag == "sha-256"
+        assert s.sign_alg == "SHA256withRSA"
+        assert s.message_alg == "AES-256-GCM"
+        assert s.key_wrap_alg == "RSA-2048-OAEP"
+
+    def test_rsa2048_cross_family_still_rejected(self):
+        with pytest.raises(UnsupportedSuiteError):
+            parse_suite("WOP-RSA2048-SM3")
