@@ -15,6 +15,8 @@ from ._parser import parse_config_json
 CONFIG_FILE_ENV = "WOP_SDK_CONFIG"
 CONFIG_FILE_OVERRIDE_ENV = "WOP_SDK_CONFIG_FILE"
 CLASSPATH_PREFIXES = ("pkg:", "classpath:")
+# 打包兜底资源（K6 优先级 6）：模板随包分发（占位符密钥，加载即校验失败并给出明确文案），
+# 文件名为包内 wopSdkConfig.json（Sourcery CR：与 config/wopSdkConfigDefault.json 仓内模板区分）
 PACKAGED_CONFIG = "config/wopSdkConfig.json"
 
 _cache_lock = threading.Lock()

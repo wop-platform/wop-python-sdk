@@ -48,6 +48,10 @@ Homepage = "https://github.com/wop-platform/wop-python-sdk"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# 配置发现兜底来源（K6 优先级 6）：打包资源随包分发，setuptools 默认不收 JSON
+[tool.setuptools.package-data]
+"wop_sdk.config" = ["*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

@@ -319,3 +319,46 @@ class TestExecute:
         )
         with pytest.raises(ConfigurationError, match="execute 需要"):
             client.execute("POST", PATH, b"x")
+
+
+class TestPackagedFallbackAndPort:  # Sourcery CR（PR #39）回归
+    def test_packaged_resource_discoverable_when_no_user_config(self, monkeypatch, tmp_path):
+        """K6 兜底：环境变量/cwd/userHome 全未命中 → 打包模板可被发现并读取。"""
+        from wop_sdk.config import load_default
+        from wop_sdk.errors import ConfigurationError
+
+        monkeypatch.delenv("WOP_SDK_CONFIG_FILE", raising=False)
+        monkeypatch.delenv("WOP_SDK_CONFIG", raising=False)
+        monkeypatch.chdir(tmp_path)  # cwd 无 config/
+        home = tmp_path / "home"
+        home.mkdir()
+        # loader 内 Path.cwd()（已 chdir 至空目录）与 Path.home() 一并指向空 home
+        class _FakePath(Path):
+            def __new__(cls, *args):
+                return Path(*args) if args else home
+
+            @classmethod
+            def home(cls):  # noqa: D102
+                return home
+
+        monkeypatch.setattr("wop_sdk.config._loader.Path", _FakePath)
+        clear_cache()
+        try:
+            load_default()
+            raise AssertionError("模板占位符密钥应在密钥校验阶段失败")
+        except ConfigurationError as exc:
+            # 兜底资源被读取：失败发生在密钥校验，而非「未找到可读配置文件」
+            assert "未找到可读配置文件" not in str(exc)
+
+    def test_invalid_port_normalized_to_configuration_error(self):
+        """Sourcery CR：非法端口（:abc）须抛 ConfigurationError 而非原生 ValueError。"""
+        from wop_sdk.config._validator import validate_gateway_url
+
+        try:
+            validate_gateway_url("https://gw.example.com:abc/gateway", "serverRoot")
+            raise AssertionError("非法端口应拒绝")
+        except ConfigurationError as exc:
+            assert "serverRoot 不是合法 URL" in str(exc)
+        import pytest as _pytest
+        with _pytest.raises(ConfigurationError):
+            validate_gateway_url("https://gw.example.com:99999/gateway", "serverRoot")

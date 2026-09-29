@@ -76,7 +76,11 @@ def validate_gateway_url(value: str, field_name: str) -> str:
     if not parsed.netloc:
         raise ConfigurationError(f"{field_name} 不是合法 URL: {trimmed}")
     host = parsed.hostname or ""
-    port = parsed.port
+    # 非法端口（如 :abc / 越界）时 parsed.port 抛原生 ValueError，须归一为 ConfigurationError（Sourcery CR）
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ConfigurationError(f"{field_name} 不是合法 URL: {trimmed}") from exc
     path = parsed.path or ""
     normalized = "https://" + host.lower()
     if port is not None:
