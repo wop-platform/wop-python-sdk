@@ -7,15 +7,23 @@
   验签/解密类 reason 模糊（I7），格式/完整性/一致性类 reason 明确（10.2）。
 """
 import json
+import logging
 import os
+import threading
 import time
+import uuid
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Union
+
+if TYPE_CHECKING:
+    from .config._models import WopSdkConfig
+    from .transports import Transport
 
 from .canonical import build_canonical, canonical_headers
 from .digest import build_digest_header, verify_digest_header
 from .encoding import b64url_encode
 from .envelope import open_l2, seal_l2
+from .config._validator import validate_api_path
 from .errors import (
     ConfigurationError,
     DecryptError,
@@ -25,6 +33,7 @@ from .errors import (
     SignatureVerifyError,
     SuiteParseError,
     UnsupportedSuiteError,
+    WopGatewayResponseError,
     WopSdkError,
 )
 from .keys import (
@@ -41,6 +50,38 @@ Csprng = Callable[[int], bytes]
 
 _LEVELS = ("L0", "L2")
 _DEK_PREFIX = "L2;dek="
+_HEADER_REQUEST_ID = "x-wop-request-id"
+
+# 附录 I/I3 日志义务：出向构造点 INFO 打印最终透传头值（非敏感，豁免脱敏）
+_OUT_LOG = logging.getLogger("wop_sdk.outbound")
+
+# 附录 I/I2 trim 集 = G2 TrimAll 空白类（空格、\t、\n、\x0B、\f、\r）；不用 str.strip()（Unicode 空白超集）
+_TRIM_CHARS = " \t\n\x0B\f\r"
+
+# 附录 I/I3：缺省 requestId 生成器（可整体替换——测试确定性锚，与 csprng 注入同级）
+request_id_generator: Callable[[], str] = lambda: uuid.uuid4().hex
+
+
+def resolve_request_id(raw: Optional[str]) -> Optional[str]:
+    """附录 I/I2 requestId 校验（构造即拒，configuration 类）。
+
+    1. trim 前按**原值**逐字符扫描控制字符（< 0x20 或 == 0x7F，含 CR/LF/NUL/DEL）——防头注入；
+    2. trim（G2 TrimAll 同集）后为空 → 视为未设置（返回 None，走缺省生成）；
+    3. trim 后 UTF-8 编码字节 > 128 → 拒（网关 header 缓冲按字节计）。
+    返回 trim 后上行值；None = 未设置。
+    """
+    if raw is None:
+        return None
+    for ch in raw:
+        if ord(ch) < 0x20 or ord(ch) == 0x7F:
+            raise ConfigurationError(f"requestId 含控制字符（防头注入）: {ord(ch)}")
+    trimmed = raw.strip(_TRIM_CHARS)
+    if not trimmed:
+        return None
+    utf8_len = len(trimmed.encode("utf-8"))
+    if utf8_len > 128:
+        raise ConfigurationError(f"requestId UTF-8 字节长度不能超过 128（实际 {utf8_len}）")
+    return trimmed
 
 
 def _now_ms() -> int:
@@ -57,6 +98,14 @@ class WopConfig:
     merchant_private_key: str
     platform_public_key: str
     gateway_base_url: Optional[str] = None
+
+    def __repr__(self) -> str:
+        # K16：凭证字段打码
+        return (
+            f"WopConfig(app_key={self.app_key!r}, suite={self.suite!r}, "
+            f"merchant_private_key=****, platform_public_key=****, "
+            f"gateway_base_url={self.gateway_base_url!r})"
+        )
 
 
 @dataclass
@@ -85,7 +134,10 @@ class VerifyResult:
 
 
 class WopClient:
-    """协议核心客户端（纯函数式产出，无连接状态）。"""
+    """协议核心客户端 + 一站式 execute 入口（config-spec K17）。"""
+
+    _default_lock = threading.Lock()
+    _default_client: Optional["WopClient"] = None
 
     def __init__(self, config: WopConfig, csprng: Csprng = os.urandom):
         if not config.app_key or not config.app_key.strip():
@@ -114,10 +166,49 @@ class WopClient:
                 public_xy_hex=platform_pub.xy_hex, user_id=PLATFORM_INBOUND_USER_ID
             )
         self._csprng = csprng
+        self._sdk_config: Optional["WopSdkConfig"] = None
+        self._transport: Optional["Transport"] = None
+
+    @classmethod
+    def default_client(cls) -> "WopClient":
+        """惰性：load_default → 传输发现 → 构造；并发首调单实例（K15）。"""
+        with cls._default_lock:
+            if cls._default_client is None:
+                from .config import load_default
+
+                cls._default_client = cls.from_config(load_default())
+            return cls._default_client
+
+    @classmethod
+    def from_config(cls, sdk_config: "WopSdkConfig", csprng: Csprng = os.urandom) -> "WopClient":
+        """显式配置构造（不进默认实例缓存，K11）。"""
+        from .transport_discovery import discover_transport
+
+        transport = sdk_config.transport or discover_transport()
+        core = WopConfig(
+            app_key=sdk_config.app_key,
+            suite=sdk_config.suite,
+            merchant_private_key=sdk_config.merchant_private_key,
+            platform_public_key=sdk_config.platform_public_key,
+            gateway_base_url=sdk_config.server_root,
+        )
+        client = cls(core, csprng=csprng)
+        client._sdk_config = sdk_config
+        client._transport = transport
+        return client
+
+    @classmethod
+    def reset_default(cls) -> None:
+        """丢弃默认实例；须先 clear_cache() 再调用（K26）。"""
+        with cls._default_lock:
+            cls._default_client = None
 
     @property
     def suite(self) -> Suite:
         return self._suite
+
+    def __repr__(self) -> str:
+        return f"WopClient(suite={self._suite.security_req!r}, app_key={self._config.app_key!r})"
 
     # ---------- 出向 ----------
 
@@ -133,15 +224,22 @@ class WopClient:
         extra_headers: Optional[Dict[str, str]] = None,
         timestamp_ms: Optional[int] = None,
         nonce: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> RequestDraft:
         """构造请求（F9）：协议头组装 → L2 可选封装 → canonicalRequest → 签名。
 
         timestamp_ms / nonce 为确定性钩子（重放/联调用；镜像 Go WithTimestamp/
         WithNonce）。随机流消费顺序合同（wop-specs/interop/v1）：
         [16B nonce 池][CEK][12B IV][k…]——nonce 注入时跳过 nonce 池段。
+        request_id 为商户请求标识（附录 I：x-wop-request-id 透传头，恒不入签；
+        须为不含个人数据的不透明关联标识）；未传/空白 → 缺省生成 UUID 去连字符
+        （头恒存在），显式传值 trim 后原值上行，控制字符（trim 前扫描）与超长
+        （trim 后 UTF-8 字节 > 128）构造即拒。
         """
         if level not in _LEVELS:
             raise ConfigurationError("level 必须为 L0 或 L2，实际 %r" % level)
+        # 附录 I/I2：requestId 构造即校验（fail-fast，不延迟到发送前）
+        resolved_request_id = resolve_request_id(request_id)
         safe_method = method.strip().upper()
         # spec:interop-v1 随机流消费顺序：nonce 池最前，先于 seal_l2 的 CEK/IV
         if not nonce:
@@ -182,6 +280,11 @@ class WopClient:
         headers["x-wop-sign"] = (
             f'{self._suite.security_req} {auth}/{";".join(sorted(iter(headers)))}/{b64url_encode(sig)}'
         )
+        # requestId 透传头（附录 I）：在签名落盘**之后**写入，保证不在 signedHeaders 冻结清单中；
+        # 商户未传（含 trim 后为空）→ 缺省生成，最终头恒存在
+        headers[_HEADER_REQUEST_ID] = resolved_request_id or request_id_generator()
+        # 附录 I/I3 日志义务：INFO 级打印最终透传头值，供网关 AccessLog 关联排查
+        _OUT_LOG.info("x-wop-request-id=%s %s %s", headers[_HEADER_REQUEST_ID], safe_method, path)
         out: Dict[str, str] = dict(headers)
         if wire is not None:
             out.setdefault("content-type", "application/json")
@@ -223,6 +326,39 @@ class WopClient:
     ) -> VerifyResult:
         """校验平台回调（URI 取回调 path，方法恒 POST）。"""
         return self.verify_response(headers, body, callback_path, method="POST")
+
+    def execute(
+        self,
+        method: str,
+        path: str,
+        body: Optional[Union[bytes, str, dict]] = None,
+        *,
+        level: str = "L0",
+        request_id: Optional[str] = None,
+    ) -> VerifyResult:
+        """一站式：签名 → 发送 → 非 2xx 拦截 → 验签解密（§2 execute 语义）。"""
+        if self._transport is None or self._sdk_config is None:
+            raise ConfigurationError("execute 需要经 from_config/default_client 构造的客户端")
+        validate_api_path(path)
+        draft = self.build_request(
+            method,
+            path,
+            body,
+            level=level,
+            expired_seconds=self._sdk_config.expired_seconds,
+            request_id=request_id,
+        )
+        from .transports import send_draft
+
+        response = send_draft(self._transport, self._sdk_config.server_root, draft)
+        if not 200 <= response.status < 300:
+            body_len = len(response.body or b"")
+            raise WopGatewayResponseError(
+                f"WOP 网关返回 HTTP {response.status}（响应体 {body_len} 字节）",
+                response.status,
+                response.body,
+            )
+        return self.verify_response(response.headers, response.body, path, method=draft.method)
 
     def _verify_flow(
         self, lower: Dict[str, str], body: bytes, path: str, method: str, query_string: str

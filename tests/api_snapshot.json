@@ -14,6 +14,7 @@
     "DecryptError",
     "DekConsistencyError",
     "DigestMismatchError",
+    "HttpClientSettings",
     "KeyMaterialError",
     "ProtocolFormatError",
     "RequestDraft",
@@ -24,8 +25,13 @@
     "VerifyResult",
     "WopClient",
     "WopConfig",
+    "WopGatewayResponseError",
+    "WopSdkConfig",
     "WopSdkError",
     "__version__",
+    "clear_cache",
+    "load",
+    "load_default",
     "parse_suite"
   ],
   "is_class_private": false,
@@ -105,6 +111,23 @@
       "path": "wop_sdk.DigestMismatchError",
       "runtime": true,
       "target_path": "wop_sdk.errors.DigestMismatchError"
+    },
+    "HttpClientSettings": {
+      "analysis": "static",
+      "inherited": false,
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": true,
+      "is_imported": true,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": true,
+      "kind": "alias",
+      "name": "HttpClientSettings",
+      "path": "wop_sdk.HttpClientSettings",
+      "runtime": true,
+      "target_path": "wop_sdk.config.HttpClientSettings"
     },
     "KeyMaterialError": {
       "analysis": "static",
@@ -293,6 +316,40 @@
       "runtime": true,
       "target_path": "wop_sdk.client.WopConfig"
     },
+    "WopGatewayResponseError": {
+      "analysis": "static",
+      "inherited": false,
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": true,
+      "is_imported": true,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": true,
+      "kind": "alias",
+      "name": "WopGatewayResponseError",
+      "path": "wop_sdk.WopGatewayResponseError",
+      "runtime": true,
+      "target_path": "wop_sdk.errors.WopGatewayResponseError"
+    },
+    "WopSdkConfig": {
+      "analysis": "static",
+      "inherited": false,
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": true,
+      "is_imported": true,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": true,
+      "kind": "alias",
+      "name": "WopSdkConfig",
+      "path": "wop_sdk.WopSdkConfig",
+      "runtime": true,
+      "target_path": "wop_sdk.config.WopSdkConfig"
+    },
     "WopSdkError": {
       "analysis": "static",
       "inherited": false,
@@ -334,6 +391,7 @@
           "'DecryptError'",
           "'DekConsistencyError'",
           "'DigestMismatchError'",
+          "'HttpClientSettings'",
           "'KeyMaterialError'",
           "'ProtocolFormatError'",
           "'RequestDraft'",
@@ -344,8 +402,13 @@
           "'VerifyResult'",
           "'WopClient'",
           "'WopConfig'",
+          "'WopGatewayResponseError'",
+          "'WopSdkConfig'",
           "'WopSdkError'",
           "'__version__'",
+          "'clear_cache'",
+          "'load'",
+          "'load_default'",
           "'parse_suite'"
         ]
       }
@@ -663,6 +726,23 @@
       "name": "canonical",
       "path": "wop_sdk.canonical",
       "runtime": true
+    },
+    "clear_cache": {
+      "analysis": "static",
+      "inherited": false,
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": true,
+      "is_imported": true,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": true,
+      "kind": "alias",
+      "name": "clear_cache",
+      "path": "wop_sdk.clear_cache",
+      "runtime": true,
+      "target_path": "wop_sdk.config.clear_cache"
     },
     "client": {
       "analysis": "static",
@@ -1235,6 +1315,57 @@
           "runtime": true,
           "target_path": "wop_sdk.errors.SuiteParseError"
         },
+        "TYPE_CHECKING": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "TYPE_CHECKING",
+          "path": "wop_sdk.client.TYPE_CHECKING",
+          "runtime": true,
+          "target_path": "typing.TYPE_CHECKING"
+        },
+        "Transport": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": false,
+          "kind": "alias",
+          "name": "Transport",
+          "path": "wop_sdk.client.Transport",
+          "runtime": false,
+          "target_path": "wop_sdk.transports.Transport"
+        },
+        "Union": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "Union",
+          "path": "wop_sdk.client.Union",
+          "runtime": true,
+          "target_path": "typing.Union"
+        },
         "UnsupportedSuiteError": {
           "analysis": "static",
           "inherited": false,
@@ -1509,10 +1640,10 @@
             "parsed": [
               {
                 "kind": "text",
-                "value": "\u534f\u8bae\u6838\u5fc3\u5ba2\u6237\u7aef\uff08\u7eaf\u51fd\u6570\u5f0f\u4ea7\u51fa\uff0c\u65e0\u8fde\u63a5\u72b6\u6001\uff09\u3002"
+                "value": "\u534f\u8bae\u6838\u5fc3\u5ba2\u6237\u7aef + \u4e00\u7ad9\u5f0f execute \u5165\u53e3\uff08config-spec K17\uff09\u3002"
               }
             ],
-            "value": "\u534f\u8bae\u6838\u5fc3\u5ba2\u6237\u7aef\uff08\u7eaf\u51fd\u6570\u5f0f\u4ea7\u51fa\uff0c\u65e0\u8fde\u63a5\u72b6\u6001\uff09\u3002"
+            "value": "\u534f\u8bae\u6838\u5fc3\u5ba2\u6237\u7aef + \u4e00\u7ad9\u5f0f execute \u5165\u53e3\uff08config-spec K17\uff09\u3002"
           },
           "is_class_private": false,
           "is_deprecated": false,
@@ -1583,6 +1714,35 @@
               "returns": null,
               "runtime": true
             },
+            "__repr__": {
+              "analysis": "static",
+              "decorators": [],
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": true,
+              "is_wildcard_exposed": false,
+              "kind": "function",
+              "name": "__repr__",
+              "parameters": [
+                {
+                  "annotation": null,
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "self"
+                }
+              ],
+              "path": "wop_sdk.client.WopClient.__repr__",
+              "returns": {
+                "cls": "ExprName",
+                "member": "__repr__",
+                "name": "str"
+              },
+              "runtime": true
+            },
             "build_request": {
               "analysis": "static",
               "decorators": [],
@@ -1590,10 +1750,10 @@
                 "parsed": [
                   {
                     "kind": "text",
-                    "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002"
+                    "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002\nrequest_id \u4e3a\u5546\u6237\u8bf7\u6c42\u6807\u8bc6\uff08\u9644\u5f55 I\uff1ax-wop-request-id \u900f\u4f20\u5934\uff0c\u6052\u4e0d\u5165\u7b7e\uff1b\n\u987b\u4e3a\u4e0d\u542b\u4e2a\u4eba\u6570\u636e\u7684\u4e0d\u900f\u660e\u5173\u8054\u6807\u8bc6\uff09\uff1b\u672a\u4f20/\u7a7a\u767d \u2192 \u7f3a\u7701\u751f\u6210 UUID \u53bb\u8fde\u5b57\u7b26\n\uff08\u5934\u6052\u5b58\u5728\uff09\uff0c\u663e\u5f0f\u4f20\u503c trim \u540e\u539f\u503c\u4e0a\u884c\uff0c\u63a7\u5236\u5b57\u7b26\uff08trim \u524d\u626b\u63cf\uff09\u4e0e\u8d85\u957f\n\uff08trim \u540e UTF-8 \u5b57\u8282 > 128\uff09\u6784\u9020\u5373\u62d2\u3002"
                   }
                 ],
-                "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002"
+                "value": "\u6784\u9020\u8bf7\u6c42\uff08F9\uff09\uff1a\u534f\u8bae\u5934\u7ec4\u88c5 \u2192 L2 \u53ef\u9009\u5c01\u88c5 \u2192 canonicalRequest \u2192 \u7b7e\u540d\u3002\n\ntimestamp_ms / nonce \u4e3a\u786e\u5b9a\u6027\u94a9\u5b50\uff08\u91cd\u653e/\u8054\u8c03\u7528\uff1b\u955c\u50cf Go WithTimestamp/\nWithNonce\uff09\u3002\u968f\u673a\u6d41\u6d88\u8d39\u987a\u5e8f\u5408\u540c\uff08wop-specs/interop/v1\uff09\uff1a\n[16B nonce \u6c60][CEK][12B IV][k\u2026]\u2014\u2014nonce \u6ce8\u5165\u65f6\u8df3\u8fc7 nonce \u6c60\u6bb5\u3002\nrequest_id \u4e3a\u5546\u6237\u8bf7\u6c42\u6807\u8bc6\uff08\u9644\u5f55 I\uff1ax-wop-request-id \u900f\u4f20\u5934\uff0c\u6052\u4e0d\u5165\u7b7e\uff1b\n\u987b\u4e3a\u4e0d\u542b\u4e2a\u4eba\u6570\u636e\u7684\u4e0d\u900f\u660e\u5173\u8054\u6807\u8bc6\uff09\uff1b\u672a\u4f20/\u7a7a\u767d \u2192 \u7f3a\u7701\u751f\u6210 UUID \u53bb\u8fde\u5b57\u7b26\n\uff08\u5934\u6052\u5b58\u5728\uff09\uff0c\u663e\u5f0f\u4f20\u503c trim \u540e\u539f\u503c\u4e0a\u884c\uff0c\u63a7\u5236\u5b57\u7b26\uff08trim \u524d\u626b\u63cf\uff09\u4e0e\u8d85\u957f\n\uff08trim \u540e UTF-8 \u5b57\u8282 > 128\uff09\u6784\u9020\u5373\u62d2\u3002"
               },
               "is_class_private": false,
               "is_deprecated": false,
@@ -1752,6 +1912,24 @@
                   "default": "None",
                   "kind": "keyword-only",
                   "name": "nonce"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprSubscript",
+                    "left": {
+                      "cls": "ExprName",
+                      "member": "build_request",
+                      "name": "Optional"
+                    },
+                    "slice": {
+                      "cls": "ExprName",
+                      "member": "build_request",
+                      "name": "str"
+                    }
+                  },
+                  "default": "None",
+                  "kind": "keyword-only",
+                  "name": "request_id"
                 }
               ],
               "path": "wop_sdk.client.WopClient.build_request",
@@ -1760,6 +1938,311 @@
                 "member": "build_request",
                 "name": "RequestDraft"
               },
+              "runtime": true
+            },
+            "default_client": {
+              "analysis": "static",
+              "decorators": [
+                {
+                  "value": {
+                    "cls": "ExprName",
+                    "member": null,
+                    "name": "classmethod"
+                  }
+                }
+              ],
+              "docstring": {
+                "parsed": [
+                  {
+                    "kind": "text",
+                    "value": "\u60f0\u6027\uff1aload_default \u2192 \u4f20\u8f93\u53d1\u73b0 \u2192 \u6784\u9020\uff1b\u5e76\u53d1\u9996\u8c03\u5355\u5b9e\u4f8b\uff08K15\uff09\u3002"
+                  }
+                ],
+                "value": "\u60f0\u6027\uff1aload_default \u2192 \u4f20\u8f93\u53d1\u73b0 \u2192 \u6784\u9020\uff1b\u5e76\u53d1\u9996\u8c03\u5355\u5b9e\u4f8b\uff08K15\uff09\u3002"
+              },
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": false,
+              "is_wildcard_exposed": false,
+              "kind": "function",
+              "labels": [
+                "classmethod"
+              ],
+              "name": "default_client",
+              "parameters": [
+                {
+                  "annotation": null,
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "cls"
+                }
+              ],
+              "path": "wop_sdk.client.WopClient.default_client",
+              "returns": {
+                "cls": "ExprName",
+                "member": "default_client",
+                "name": "WopClient"
+              },
+              "runtime": true
+            },
+            "execute": {
+              "analysis": "static",
+              "decorators": [],
+              "docstring": {
+                "parsed": [
+                  {
+                    "kind": "text",
+                    "value": "\u4e00\u7ad9\u5f0f\uff1a\u7b7e\u540d \u2192 \u53d1\u9001 \u2192 \u975e 2xx \u62e6\u622a \u2192 \u9a8c\u7b7e\u89e3\u5bc6\uff08\u00a72 execute \u8bed\u4e49\uff09\u3002"
+                  }
+                ],
+                "value": "\u4e00\u7ad9\u5f0f\uff1a\u7b7e\u540d \u2192 \u53d1\u9001 \u2192 \u975e 2xx \u62e6\u622a \u2192 \u9a8c\u7b7e\u89e3\u5bc6\uff08\u00a72 execute \u8bed\u4e49\uff09\u3002"
+              },
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": false,
+              "is_wildcard_exposed": false,
+              "kind": "function",
+              "name": "execute",
+              "parameters": [
+                {
+                  "annotation": null,
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "self"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "execute",
+                    "name": "str"
+                  },
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "method"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "execute",
+                    "name": "str"
+                  },
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "path"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprSubscript",
+                    "left": {
+                      "cls": "ExprName",
+                      "member": "execute",
+                      "name": "Optional"
+                    },
+                    "slice": {
+                      "cls": "ExprSubscript",
+                      "left": {
+                        "cls": "ExprName",
+                        "member": "execute",
+                        "name": "Union"
+                      },
+                      "slice": {
+                        "cls": "ExprTuple",
+                        "elements": [
+                          {
+                            "cls": "ExprName",
+                            "member": "execute",
+                            "name": "bytes"
+                          },
+                          {
+                            "cls": "ExprName",
+                            "member": "execute",
+                            "name": "str"
+                          },
+                          {
+                            "cls": "ExprName",
+                            "member": "execute",
+                            "name": "dict"
+                          }
+                        ],
+                        "implicit": true
+                      }
+                    }
+                  },
+                  "default": "None",
+                  "kind": "positional or keyword",
+                  "name": "body"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "execute",
+                    "name": "str"
+                  },
+                  "default": "'L0'",
+                  "kind": "keyword-only",
+                  "name": "level"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprSubscript",
+                    "left": {
+                      "cls": "ExprName",
+                      "member": "execute",
+                      "name": "Optional"
+                    },
+                    "slice": {
+                      "cls": "ExprName",
+                      "member": "execute",
+                      "name": "str"
+                    }
+                  },
+                  "default": "None",
+                  "kind": "keyword-only",
+                  "name": "request_id"
+                }
+              ],
+              "path": "wop_sdk.client.WopClient.execute",
+              "returns": {
+                "cls": "ExprName",
+                "member": "execute",
+                "name": "VerifyResult"
+              },
+              "runtime": true
+            },
+            "from_config": {
+              "analysis": "static",
+              "decorators": [
+                {
+                  "value": {
+                    "cls": "ExprName",
+                    "member": null,
+                    "name": "classmethod"
+                  }
+                }
+              ],
+              "docstring": {
+                "parsed": [
+                  {
+                    "kind": "text",
+                    "value": "\u663e\u5f0f\u914d\u7f6e\u6784\u9020\uff08\u4e0d\u8fdb\u9ed8\u8ba4\u5b9e\u4f8b\u7f13\u5b58\uff0cK11\uff09\u3002"
+                  }
+                ],
+                "value": "\u663e\u5f0f\u914d\u7f6e\u6784\u9020\uff08\u4e0d\u8fdb\u9ed8\u8ba4\u5b9e\u4f8b\u7f13\u5b58\uff0cK11\uff09\u3002"
+              },
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": false,
+              "is_wildcard_exposed": false,
+              "kind": "function",
+              "labels": [
+                "classmethod"
+              ],
+              "name": "from_config",
+              "parameters": [
+                {
+                  "annotation": null,
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "cls"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "from_config",
+                    "name": "WopSdkConfig"
+                  },
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "sdk_config"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "from_config",
+                    "name": "Csprng"
+                  },
+                  "default": {
+                    "cls": "ExprAttribute",
+                    "values": [
+                      {
+                        "cls": "ExprName",
+                        "member": null,
+                        "name": "os"
+                      },
+                      {
+                        "cls": "ExprName",
+                        "member": null,
+                        "name": "urandom"
+                      }
+                    ]
+                  },
+                  "kind": "positional or keyword",
+                  "name": "csprng"
+                }
+              ],
+              "path": "wop_sdk.client.WopClient.from_config",
+              "returns": {
+                "cls": "ExprName",
+                "member": "from_config",
+                "name": "WopClient"
+              },
+              "runtime": true
+            },
+            "reset_default": {
+              "analysis": "static",
+              "decorators": [
+                {
+                  "value": {
+                    "cls": "ExprName",
+                    "member": null,
+                    "name": "classmethod"
+                  }
+                }
+              ],
+              "docstring": {
+                "parsed": [
+                  {
+                    "kind": "text",
+                    "value": "\u4e22\u5f03\u9ed8\u8ba4\u5b9e\u4f8b\uff1b\u987b\u5148 clear_cache() \u518d\u8c03\u7528\uff08K26\uff09\u3002"
+                  }
+                ],
+                "value": "\u4e22\u5f03\u9ed8\u8ba4\u5b9e\u4f8b\uff1b\u987b\u5148 clear_cache() \u518d\u8c03\u7528\uff08K26\uff09\u3002"
+              },
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": false,
+              "is_wildcard_exposed": false,
+              "kind": "function",
+              "labels": [
+                "classmethod"
+              ],
+              "name": "reset_default",
+              "parameters": [
+                {
+                  "annotation": null,
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "cls"
+                }
+              ],
+              "path": "wop_sdk.client.WopClient.reset_default",
+              "returns": "None",
               "runtime": true
             },
             "suite": {
@@ -2115,6 +2598,35 @@
               "returns": "None",
               "runtime": true
             },
+            "__repr__": {
+              "analysis": "static",
+              "decorators": [],
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": true,
+              "is_wildcard_exposed": false,
+              "kind": "function",
+              "name": "__repr__",
+              "parameters": [
+                {
+                  "annotation": null,
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "self"
+                }
+              ],
+              "path": "wop_sdk.client.WopConfig.__repr__",
+              "returns": {
+                "cls": "ExprName",
+                "member": "__repr__",
+                "name": "str"
+              },
+              "runtime": true
+            },
             "app_key": {
               "analysis": "static",
               "annotation": {
@@ -2244,6 +2756,40 @@
           "name": "WopConfig",
           "path": "wop_sdk.client.WopConfig",
           "runtime": true
+        },
+        "WopGatewayResponseError": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "WopGatewayResponseError",
+          "path": "wop_sdk.client.WopGatewayResponseError",
+          "runtime": true,
+          "target_path": "wop_sdk.errors.WopGatewayResponseError"
+        },
+        "WopSdkConfig": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": false,
+          "kind": "alias",
+          "name": "WopSdkConfig",
+          "path": "wop_sdk.client.WopSdkConfig",
+          "runtime": false,
+          "target_path": "wop_sdk.config._models.WopSdkConfig"
         },
         "WopSdkError": {
           "analysis": "static",
@@ -2432,6 +2978,23 @@
           "runtime": true,
           "target_path": "wop_sdk.keys.load_sm2_public_key"
         },
+        "logging": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "logging",
+          "path": "wop_sdk.client.logging",
+          "runtime": true,
+          "target_path": "logging"
+        },
         "open_l2": {
           "analysis": "static",
           "inherited": false,
@@ -2482,6 +3045,138 @@
           "path": "wop_sdk.client.parse_suite",
           "runtime": true,
           "target_path": "wop_sdk.suites.parse_suite"
+        },
+        "request_id_generator": {
+          "analysis": "static",
+          "annotation": {
+            "cls": "ExprSubscript",
+            "left": {
+              "cls": "ExprName",
+              "member": null,
+              "name": "Callable"
+            },
+            "slice": {
+              "cls": "ExprTuple",
+              "elements": [
+                {
+                  "cls": "ExprList",
+                  "elements": []
+                },
+                {
+                  "cls": "ExprName",
+                  "member": null,
+                  "name": "str"
+                }
+              ],
+              "implicit": true
+            }
+          },
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": false,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "attribute",
+          "labels": [
+            "module-attribute"
+          ],
+          "name": "request_id_generator",
+          "path": "wop_sdk.client.request_id_generator",
+          "runtime": true,
+          "value": {
+            "body": {
+              "cls": "ExprAttribute",
+              "values": [
+                {
+                  "arguments": [],
+                  "cls": "ExprCall",
+                  "function": {
+                    "cls": "ExprAttribute",
+                    "values": [
+                      {
+                        "cls": "ExprName",
+                        "member": null,
+                        "name": "uuid"
+                      },
+                      {
+                        "cls": "ExprName",
+                        "member": null,
+                        "name": "uuid4"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "cls": "ExprName",
+                  "member": null,
+                  "name": "hex"
+                }
+              ]
+            },
+            "cls": "ExprLambda",
+            "parameters": []
+          }
+        },
+        "resolve_request_id": {
+          "analysis": "static",
+          "decorators": [],
+          "docstring": {
+            "parsed": [
+              {
+                "kind": "text",
+                "value": "\u9644\u5f55 I/I2 requestId \u6821\u9a8c\uff08\u6784\u9020\u5373\u62d2\uff0cconfiguration \u7c7b\uff09\u3002\n\n1. trim \u524d\u6309**\u539f\u503c**\u9010\u5b57\u7b26\u626b\u63cf\u63a7\u5236\u5b57\u7b26\uff08< 0x20 \u6216 == 0x7F\uff0c\u542b CR/LF/NUL/DEL\uff09\u2014\u2014\u9632\u5934\u6ce8\u5165\uff1b\n2. trim\uff08G2 TrimAll \u540c\u96c6\uff09\u540e\u4e3a\u7a7a \u2192 \u89c6\u4e3a\u672a\u8bbe\u7f6e\uff08\u8fd4\u56de None\uff0c\u8d70\u7f3a\u7701\u751f\u6210\uff09\uff1b\n3. trim \u540e UTF-8 \u7f16\u7801\u5b57\u8282 > 128 \u2192 \u62d2\uff08\u7f51\u5173 header \u7f13\u51b2\u6309\u5b57\u8282\u8ba1\uff09\u3002\n\u8fd4\u56de trim \u540e\u4e0a\u884c\u503c\uff1bNone = \u672a\u8bbe\u7f6e\u3002"
+              }
+            ],
+            "value": "\u9644\u5f55 I/I2 requestId \u6821\u9a8c\uff08\u6784\u9020\u5373\u62d2\uff0cconfiguration \u7c7b\uff09\u3002\n\n1. trim \u524d\u6309**\u539f\u503c**\u9010\u5b57\u7b26\u626b\u63cf\u63a7\u5236\u5b57\u7b26\uff08< 0x20 \u6216 == 0x7F\uff0c\u542b CR/LF/NUL/DEL\uff09\u2014\u2014\u9632\u5934\u6ce8\u5165\uff1b\n2. trim\uff08G2 TrimAll \u540c\u96c6\uff09\u540e\u4e3a\u7a7a \u2192 \u89c6\u4e3a\u672a\u8bbe\u7f6e\uff08\u8fd4\u56de None\uff0c\u8d70\u7f3a\u7701\u751f\u6210\uff09\uff1b\n3. trim \u540e UTF-8 \u7f16\u7801\u5b57\u8282 > 128 \u2192 \u62d2\uff08\u7f51\u5173 header \u7f13\u51b2\u6309\u5b57\u8282\u8ba1\uff09\u3002\n\u8fd4\u56de trim \u540e\u4e0a\u884c\u503c\uff1bNone = \u672a\u8bbe\u7f6e\u3002"
+          },
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": false,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "function",
+          "name": "resolve_request_id",
+          "parameters": [
+            {
+              "annotation": {
+                "cls": "ExprSubscript",
+                "left": {
+                  "cls": "ExprName",
+                  "member": "resolve_request_id",
+                  "name": "Optional"
+                },
+                "slice": {
+                  "cls": "ExprName",
+                  "member": "resolve_request_id",
+                  "name": "str"
+                }
+              },
+              "default": null,
+              "kind": "positional or keyword",
+              "name": "raw"
+            }
+          ],
+          "path": "wop_sdk.client.resolve_request_id",
+          "returns": {
+            "cls": "ExprSubscript",
+            "left": {
+              "cls": "ExprName",
+              "member": "resolve_request_id",
+              "name": "Optional"
+            },
+            "slice": {
+              "cls": "ExprName",
+              "member": "resolve_request_id",
+              "name": "str"
+            }
+          },
+          "runtime": true
         },
         "seal_l2": {
           "analysis": "static",
@@ -2534,6 +3229,23 @@
           "runtime": true,
           "target_path": "wop_sdk.sm2crypto.sm2_derive_public_hex"
         },
+        "threading": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "threading",
+          "path": "wop_sdk.client.threading",
+          "runtime": true,
+          "target_path": "threading"
+        },
         "time": {
           "analysis": "static",
           "inherited": false,
@@ -2550,6 +3262,40 @@
           "path": "wop_sdk.client.time",
           "runtime": true,
           "target_path": "time"
+        },
+        "uuid": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "uuid",
+          "path": "wop_sdk.client.uuid",
+          "runtime": true,
+          "target_path": "uuid"
+        },
+        "validate_api_path": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "validate_api_path",
+          "path": "wop_sdk.client.validate_api_path",
+          "runtime": true,
+          "target_path": "wop_sdk.config._validator.validate_api_path"
         },
         "verify": {
           "analysis": "static",
@@ -2588,6 +3334,152 @@
       },
       "name": "client",
       "path": "wop_sdk.client",
+      "runtime": true
+    },
+    "config": {
+      "analysis": "static",
+      "docstring": {
+        "parsed": [
+          {
+            "kind": "text",
+            "value": "\u914d\u7f6e\u52a0\u8f7d\u5c42\uff08config-spec \u00a73\u2013\u00a74\uff0c\u9644\u5f55 D Python \u7ed1\u5b9a\uff09\u3002"
+          }
+        ],
+        "value": "\u914d\u7f6e\u52a0\u8f7d\u5c42\uff08config-spec \u00a73\u2013\u00a74\uff0c\u9644\u5f55 D Python \u7ed1\u5b9a\uff09\u3002"
+      },
+      "exports": [
+        "HttpClientSettings",
+        "WopSdkConfig",
+        "clear_cache",
+        "load",
+        "load_default"
+      ],
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": false,
+      "is_imported": false,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": false,
+      "kind": "module",
+      "members": {
+        "HttpClientSettings": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": true,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "HttpClientSettings",
+          "path": "wop_sdk.config.HttpClientSettings",
+          "runtime": true,
+          "target_path": "wop_sdk.config._models.HttpClientSettings"
+        },
+        "WopSdkConfig": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": true,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "WopSdkConfig",
+          "path": "wop_sdk.config.WopSdkConfig",
+          "runtime": true,
+          "target_path": "wop_sdk.config._models.WopSdkConfig"
+        },
+        "__all__": {
+          "analysis": "static",
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": false,
+          "is_private": false,
+          "is_public": false,
+          "is_special": true,
+          "is_wildcard_exposed": false,
+          "kind": "attribute",
+          "labels": [
+            "module-attribute"
+          ],
+          "name": "__all__",
+          "path": "wop_sdk.config.__all__",
+          "runtime": true,
+          "value": {
+            "cls": "ExprList",
+            "elements": [
+              "'HttpClientSettings'",
+              "'WopSdkConfig'",
+              "'clear_cache'",
+              "'load'",
+              "'load_default'"
+            ]
+          }
+        },
+        "clear_cache": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": true,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "clear_cache",
+          "path": "wop_sdk.config.clear_cache",
+          "runtime": true,
+          "target_path": "wop_sdk.config._loader.clear_cache"
+        },
+        "load": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": true,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "load",
+          "path": "wop_sdk.config.load",
+          "runtime": true,
+          "target_path": "wop_sdk.config._loader.load"
+        },
+        "load_default": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": true,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "load_default",
+          "path": "wop_sdk.config.load_default",
+          "runtime": true,
+          "target_path": "wop_sdk.config._loader.load_default"
+        }
+      },
+      "name": "config",
+      "path": "wop_sdk.config",
       "runtime": true
     },
     "digest": {
@@ -4734,7 +5626,8 @@
                   "'integrity'",
                   "'consistency'",
                   "'signature'",
-                  "'decrypt'"
+                  "'decrypt'",
+                  "'system'"
                 ]
               }
             ],
@@ -5049,6 +5942,161 @@
           },
           "name": "UnsupportedSuiteError",
           "path": "wop_sdk.errors.UnsupportedSuiteError",
+          "runtime": true
+        },
+        "WopGatewayResponseError": {
+          "analysis": "static",
+          "bases": [
+            {
+              "cls": "ExprName",
+              "member": "WopGatewayResponseError",
+              "name": "WopSdkError"
+            }
+          ],
+          "decorators": [],
+          "docstring": {
+            "parsed": [
+              {
+                "kind": "text",
+                "value": "\u7f51\u5173 HTTP \u975e 2xx \u54cd\u5e94\uff08config-spec \u00a77.5 K5\uff09\uff1b\u542b status_code \u4e0e body \u8bbf\u95ee\u5668\u3002"
+              }
+            ],
+            "value": "\u7f51\u5173 HTTP \u975e 2xx \u54cd\u5e94\uff08config-spec \u00a77.5 K5\uff09\uff1b\u542b status_code \u4e0e body \u8bbf\u95ee\u5668\u3002"
+          },
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": false,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "class",
+          "members": {
+            "__init__": {
+              "analysis": "static",
+              "decorators": [],
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": true,
+              "is_wildcard_exposed": false,
+              "kind": "function",
+              "name": "__init__",
+              "parameters": [
+                {
+                  "annotation": null,
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "self"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "__init__",
+                    "name": "str"
+                  },
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "message"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "__init__",
+                    "name": "int"
+                  },
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "status_code"
+                },
+                {
+                  "annotation": {
+                    "cls": "ExprName",
+                    "member": "__init__",
+                    "name": "bytes"
+                  },
+                  "default": null,
+                  "kind": "positional or keyword",
+                  "name": "body"
+                }
+              ],
+              "path": "wop_sdk.errors.WopGatewayResponseError.__init__",
+              "returns": null,
+              "runtime": true
+            },
+            "body": {
+              "analysis": "static",
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": false,
+              "is_wildcard_exposed": false,
+              "kind": "attribute",
+              "labels": [
+                "instance-attribute"
+              ],
+              "name": "body",
+              "path": "wop_sdk.errors.WopGatewayResponseError.body",
+              "runtime": true,
+              "value": {
+                "cls": "ExprName",
+                "member": null,
+                "name": "body"
+              }
+            },
+            "category": {
+              "analysis": "static",
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": false,
+              "is_wildcard_exposed": false,
+              "kind": "attribute",
+              "labels": [
+                "class-attribute",
+                "instance-attribute"
+              ],
+              "name": "category",
+              "path": "wop_sdk.errors.WopGatewayResponseError.category",
+              "runtime": true,
+              "value": "'system'"
+            },
+            "status_code": {
+              "analysis": "static",
+              "is_class_private": false,
+              "is_deprecated": false,
+              "is_exported": false,
+              "is_imported": false,
+              "is_private": false,
+              "is_public": true,
+              "is_special": false,
+              "is_wildcard_exposed": false,
+              "kind": "attribute",
+              "labels": [
+                "instance-attribute"
+              ],
+              "name": "status_code",
+              "path": "wop_sdk.errors.WopGatewayResponseError.status_code",
+              "runtime": true,
+              "value": {
+                "cls": "ExprName",
+                "member": null,
+                "name": "status_code"
+              }
+            }
+          },
+          "name": "WopGatewayResponseError",
+          "path": "wop_sdk.errors.WopGatewayResponseError",
           "runtime": true
         },
         "WopSdkError": {
@@ -5625,6 +6673,40 @@
       "name": "keys",
       "path": "wop_sdk.keys",
       "runtime": true
+    },
+    "load": {
+      "analysis": "static",
+      "inherited": false,
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": true,
+      "is_imported": true,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": true,
+      "kind": "alias",
+      "name": "load",
+      "path": "wop_sdk.load",
+      "runtime": true,
+      "target_path": "wop_sdk.config.load"
+    },
+    "load_default": {
+      "analysis": "static",
+      "inherited": false,
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": true,
+      "is_imported": true,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": true,
+      "kind": "alias",
+      "name": "load_default",
+      "path": "wop_sdk.load_default",
+      "runtime": true,
+      "target_path": "wop_sdk.config.load_default"
     },
     "parse_suite": {
       "analysis": "static",
@@ -7516,6 +8598,199 @@
       },
       "name": "suites",
       "path": "wop_sdk.suites",
+      "runtime": true
+    },
+    "transport_discovery": {
+      "analysis": "static",
+      "docstring": {
+        "parsed": [
+          {
+            "kind": "text",
+            "value": "\u4f20\u8f93\u53d1\u73b0\uff08config-spec \u00a77.2 / K18 P0\uff1a\u9ed8\u8ba4 urllib\uff0c\u6b67\u4e49 fail-fast\uff09\u3002"
+          }
+        ],
+        "value": "\u4f20\u8f93\u53d1\u73b0\uff08config-spec \u00a77.2 / K18 P0\uff1a\u9ed8\u8ba4 urllib\uff0c\u6b67\u4e49 fail-fast\uff09\u3002"
+      },
+      "is_class_private": false,
+      "is_deprecated": false,
+      "is_exported": false,
+      "is_imported": false,
+      "is_private": false,
+      "is_public": true,
+      "is_special": false,
+      "is_wildcard_exposed": false,
+      "kind": "module",
+      "members": {
+        "ConfigurationError": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "ConfigurationError",
+          "path": "wop_sdk.transport_discovery.ConfigurationError",
+          "runtime": true,
+          "target_path": "wop_sdk.errors.ConfigurationError"
+        },
+        "Dict": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "Dict",
+          "path": "wop_sdk.transport_discovery.Dict",
+          "runtime": true,
+          "target_path": "typing.Dict"
+        },
+        "List": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "List",
+          "path": "wop_sdk.transport_discovery.List",
+          "runtime": true,
+          "target_path": "typing.List"
+        },
+        "Transport": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "Transport",
+          "path": "wop_sdk.transport_discovery.Transport",
+          "runtime": true,
+          "target_path": "wop_sdk.transports.Transport"
+        },
+        "UrllibTransport": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "UrllibTransport",
+          "path": "wop_sdk.transport_discovery.UrllibTransport",
+          "runtime": true,
+          "target_path": "wop_sdk.transports.UrllibTransport"
+        },
+        "annotations": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "annotations",
+          "path": "wop_sdk.transport_discovery.annotations",
+          "runtime": true,
+          "target_path": "__future__.annotations"
+        },
+        "discover_transport": {
+          "analysis": "static",
+          "decorators": [],
+          "docstring": {
+            "parsed": [
+              {
+                "kind": "text",
+                "value": "\u53d1\u73b0\u552f\u4e00\u53ef\u7528\u4f20\u8f93\uff1b\u96f6\u4e2a\u6216\u591a\u4e2a\u4e14\u65e0\u663e\u5f0f\u6307\u5b9a\u65f6 fail-fast\uff08K12\uff09\u3002"
+              }
+            ],
+            "value": "\u53d1\u73b0\u552f\u4e00\u53ef\u7528\u4f20\u8f93\uff1b\u96f6\u4e2a\u6216\u591a\u4e2a\u4e14\u65e0\u663e\u5f0f\u6307\u5b9a\u65f6 fail-fast\uff08K12\uff09\u3002"
+          },
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": false,
+          "is_private": false,
+          "is_public": true,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "function",
+          "name": "discover_transport",
+          "parameters": [],
+          "path": "wop_sdk.transport_discovery.discover_transport",
+          "returns": {
+            "cls": "ExprName",
+            "member": "discover_transport",
+            "name": "Transport"
+          },
+          "runtime": true
+        },
+        "importlib": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "importlib",
+          "path": "wop_sdk.transport_discovery.importlib",
+          "runtime": true,
+          "target_path": "importlib"
+        },
+        "os": {
+          "analysis": "static",
+          "inherited": false,
+          "is_class_private": false,
+          "is_deprecated": false,
+          "is_exported": false,
+          "is_imported": true,
+          "is_private": false,
+          "is_public": false,
+          "is_special": false,
+          "is_wildcard_exposed": true,
+          "kind": "alias",
+          "name": "os",
+          "path": "wop_sdk.transport_discovery.os",
+          "runtime": true,
+          "target_path": "os"
+        }
+      },
+      "name": "transport_discovery",
+      "path": "wop_sdk.transport_discovery",
       "runtime": true
     },
     "transports": {

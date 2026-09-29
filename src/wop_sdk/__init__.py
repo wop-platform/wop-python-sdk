@@ -6,6 +6,7 @@
 from importlib.metadata import PackageNotFoundError, version as _dist_version
 
 from .client import RequestDraft, VerifyResult, WopClient, WopConfig
+from .config import HttpClientSettings, WopSdkConfig, clear_cache, load, load_default
 from .errors import (
     ConfigurationError,
     DecryptError,
@@ -16,6 +17,7 @@ from .errors import (
     SignatureVerifyError,
     SuiteParseError,
     UnsupportedSuiteError,
+    WopGatewayResponseError,
     WopSdkError,
 )
 from .suites import Suite, parse_suite
@@ -32,6 +34,7 @@ __all__ = [
     "DecryptError",
     "DekConsistencyError",
     "DigestMismatchError",
+    "HttpClientSettings",
     "KeyMaterialError",
     "ProtocolFormatError",
     "RequestDraft",
@@ -42,7 +45,12 @@ __all__ = [
     "VerifyResult",
     "WopClient",
     "WopConfig",
+    "WopGatewayResponseError",
+    "WopSdkConfig",
     "WopSdkError",
     "__version__",
+    "clear_cache",
+    "load",
+    "load_default",
     "parse_suite",
 ]

@@ -288,7 +288,9 @@ def merchant_build_l2(ctx):
 
 
 @when("商户以相同时间戳与 nonce 重复构建 L2 请求")
-def merchant_build_l2_twice(ctx):
+def merchant_build_l2_twice(ctx, monkeypatch):
+    # 附录 I/I3：缺省 requestId 属 CSPRNG 豁免项，注入固定生成器后全头逐字节可重放
+    monkeypatch.setattr(client_mod, "request_id_generator", lambda: "fixedreq" + "0" * 26)
     kw = dict(level="L2", timestamp_ms=FROZEN_MS, nonce="ab" * 16)
     ctx.drafts = [ctx.client.build_request("POST", PATH, ORDER, **kw) for _ in range(2)]
 

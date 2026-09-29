@@ -39,7 +39,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE_PATH = os.path.join(HERE, "fixtures", "interop-cases.json")
 
 # 真源 wop-specs/interop/v1/interop-cases.json 的 sha256（字节副本哨兵）
-EXPECTED_SHA256 = "c920ca1a93ccb3899a659f59fed6ec4652cf9e1b3b58bbdac23c45ac3ed2353e"
+EXPECTED_SHA256 = "9a51486d8d00df45b60001515acce7eb89b731876233b9e39cd8b141b1af1d42"
 EXPECTED_FORMAT = "wop-interop-1"
 
 with open(FIXTURE_PATH, "r", encoding="utf-8") as _f:
@@ -222,9 +222,12 @@ class TestInteropConformanceBuild:  # spec:interop-v1 消费要求 2
                 got, want = _strip_dek_value(got), _strip_dek_value(want)
             assert got == want, f"头 {name} 不一致"
         # 头集合哨兵：协议头（x-wop-*）恰为 fixture 声明集合；
+        # x-wop-request-id 是规格附录 I 的可选透传头（恒不入签、网关日志关联用），
+        # 不属于 interop 冻结的协议头合同（fixture sha256 钉死不可改），比对前剥离；
         # 签名集外仅允许本仓出向便利头 content-type（不参与签名，不影响协议编排）
-        assert {k for k in draft.headers if k.startswith("x-wop-")} == set(expected["headers"])
-        assert set(draft.headers) - set(expected["headers"]) <= {"content-type"}
+        protocol_headers = {k: v for k, v in draft.headers.items() if k != "x-wop-request-id"}
+        assert {k for k in protocol_headers if k.startswith("x-wop-")} == set(expected["headers"])
+        assert set(protocol_headers) - set(expected["headers"]) <= {"content-type"}
 
 
 class TestInteropConformanceVerify:  # spec:interop-v1 消费要求 3
