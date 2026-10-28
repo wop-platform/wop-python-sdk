@@ -89,6 +89,16 @@ class TestSubMchIdSigned:
             )
 
 
+class TestSubMchIdInbound:
+    def test_inbound_ignores_unsigned_sub_mch_header(self, rsa_client):
+        # 附录 J/J3：入向（响应/回调）不消费 x-wop-sub-mch-id——额外携带未入签的该头仍通过
+        draft = rsa_client.build_request("POST", PATH, b'{"code":0}')
+        headers = dict(draft.headers)
+        headers["x-wop-sub-mch-id"] = "PLF-SUB-001"  # 签名完成后追加，不在 signedHeaders
+        result = rsa_client.verify_response(headers, draft.wire_body, PATH)
+        assert result.ok, result.reason
+
+
 class TestSubMchIdZeroRegression:  # spec:AC-20
     def test_absent_or_blank_behaves_as_before(self, rsa_client, monkeypatch):
         monkeypatch.setattr(client_mod, "request_id_generator", lambda: "fixed" + "0" * 27)

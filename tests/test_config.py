@@ -277,6 +277,22 @@ class TestExecute:
         assert result.ok
         assert draft_holder["url"] == "https://gw.example.com/gateway/gateway/order/create"
 
+    def test_execute_carries_sub_mch_id(self, valid_sdk_config):
+        # 一站式入口透传子商户身份：发出请求头含 x-wop-sub-mch-id
+        client = WopClient.from_config(valid_sdk_config, csprng=lambda n: b"Z" * n)
+        seen = {}
+
+        class RecordingTransport:
+            def send(self, method, url, headers, body):
+                seen["headers"] = dict(headers)
+                draft = client.build_request("POST", PATH, b'{"code":0}')
+                return HttpResponse(200, draft.headers, draft.wire_body)
+
+        client._transport = RecordingTransport()
+        result = client.execute("POST", PATH, b'{"code":0}', sub_mch_id="PLF-SUB-001")
+        assert result.ok
+        assert seen["headers"].get("x-wop-sub-mch-id") == "PLF-SUB-001"
+
     def test_execute_non_2xx_raises_gateway_error(self, valid_sdk_config):
         client = WopClient.from_config(valid_sdk_config)
 
