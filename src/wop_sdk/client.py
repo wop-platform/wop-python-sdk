@@ -94,10 +94,13 @@ def resolve_sub_mch_id(raw: Optional[str]) -> Optional[str]:
     3. trim 后含内部空格 → 拒（网关 canonical 的 trimall 会折叠内部空白，而身份查询只做
        trim，内部空白破坏签名与身份一一对应）；
     4. trim 后长度 > 128 字符 → 拒（ASCII 下字符数 = 字节数）。
-    返回 trim 后上行值；None = 未设置。
+    返回 trim 后上行值；None = 未设置。非 str 输入一律 configuration（不抛裸 TypeError）。
     """
     if raw is None:
         return None
+    if not isinstance(raw, str):
+        # 防裸 TypeError；也防 str() 强转把 None 变成 "None" 静默入签
+        raise ConfigurationError(f"subMchId 须为字符串，实际 {type(raw).__name__}")
     for ch in raw:
         if ord(ch) < 0x20 or ord(ch) > 0x7E:
             raise ConfigurationError(f"subMchId 须为可打印 ASCII（防头注入/签名歧义）: {ord(ch)}")
@@ -300,7 +303,7 @@ class WopClient:
         # ISV D-13：subMchId 同解析链（extra_headers 等价参数；双来源同传 = 歧义即拒）
         header_sub_mch_id = next(
             (
-                str(value)
+                value
                 for name, value in (extra_headers or {}).items()
                 if name.strip().lower() == _HEADER_SUB_MCH_ID
             ),

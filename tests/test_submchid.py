@@ -127,3 +127,25 @@ class TestSubMchIdValidation:
     def test_printable_ascii_boundary(self, rsa_client):
         draft = rsa_client.build_request("GET", PATH, sub_mch_id="!~")
         assert draft.headers["x-wop-sub-mch-id"] == "!~"
+
+    @pytest.mark.parametrize("bad", [12345, 12.5, b"PLF-SUB-001", ["x"]])
+    def test_non_str_param_rejected_as_configuration(self, rsa_client, bad):
+        # 参数路径原值进校验链：非 str 一律 configuration，不抛裸 TypeError
+        with pytest.raises(ConfigurationError, match="须为字符串"):
+            rsa_client.build_request("GET", PATH, sub_mch_id=bad)
+
+    def test_extra_headers_non_str_rejected_as_configuration(self, rsa_client):
+        # 修复前 str(123) 会强转后入签；现原值进同一校验链
+        with pytest.raises(ConfigurationError, match="须为字符串"):
+            rsa_client.build_request("GET", PATH, extra_headers={"x-wop-sub-mch-id": 123})
+
+    def test_extra_headers_none_means_absent(self, rsa_client, monkeypatch):
+        # 修复前 str(None)="None" 会静默入签错误身份；现视为未设置，头缺席
+        monkeypatch.setattr(client_mod, "request_id_generator", lambda: "fixed" + "0" * 27)
+        common = dict(timestamp_ms=1774340000000, nonce="n1")
+        baseline = rsa_client.build_request("GET", PATH, **common)
+        draft = rsa_client.build_request(
+            "GET", PATH, extra_headers={"x-wop-sub-mch-id": None}, **common
+        )
+        assert "x-wop-sub-mch-id" not in draft.headers
+        assert draft.headers == baseline.headers
