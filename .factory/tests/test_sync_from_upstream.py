@@ -1,7 +1,7 @@
 """sync-from-upstream.sh 回归测试 —— 补齐缺失文件分支（脚本首测）。
 
 缺陷→测试映射:
-- 缺失父目录写入崩溃（wop-skills 2026-08-31 事故：tests/ 目录整缺，
+- 缺失父目录写入崩溃（xx-skills 2026-08-31 事故：tests/ 目录整缺，
   「本地缺失」补齐分支对不存在路径直接重定向 → No such file or directory，
   apply 中途崩、锚点未写）→ TestApplyMissingParentDir：mkdir -p 补齐
   + blob 落地 + mode 恢复 + 锚点写入 + rc=0
@@ -21,7 +21,6 @@
 """
 
 import glob
-import os
 import json
 import re
 import subprocess
@@ -184,7 +183,7 @@ class TestApplyCommit:
         proc = self._run(dn, str(up), "--apply", "--commit", "--anchor", "main")
         assert proc.returncode == 0, proc.stdout + proc.stderr
         assert _head_count(dn) == 2, "单提交落库（fixture 1 + 追平 1）"
-        assert _head_subject(dn) == f"factory: 上游同步追平（{anchor[:9]}）"
+        assert _head_subject(dn) == f"chore(factory): 上游同步追平（{anchor[:9]}）"
         ignore = dn / ".git-blame-ignore-revs"
         lines = ignore.read_text(encoding="utf-8").splitlines()
         assert lines and lines[0].startswith("#"), "带说明头"
@@ -230,7 +229,7 @@ class TestApplyCommit:
         proc = self._run(dn, str(up), "--apply", "--commit", "--anchor", "main")
         assert proc.returncode == 0, proc.stdout + proc.stderr
         assert _head_count(dn) == 3
-        assert _head_subject(dn) == f"factory: 上游同步追平（{anchor2[:9]}）"
+        assert _head_subject(dn) == f"chore(factory): 上游同步追平（{anchor2[:9]}）"
         lines = (dn / ".git-blame-ignore-revs").read_text(encoding="utf-8").splitlines()
         assert first_sync in lines, "滞后一条：本轮记上一轮追平提交"
 
@@ -392,8 +391,8 @@ class TestPR105ReviewRegressions:
         assert status.strip() == "?? .git-blame-ignore-revs", \
             "首建 ignore 留工作树（untracked），随下次真追平入库"
 
-    def test_sourcery_rejection_leaves_no_temp_files(self, repos, tmp_path):
-        """评论 3：Sourcery 拒绝（set -e 中途退出）后 /tmp 无暂存文件泄漏。"""
+    def test_sourcery_rejection_leaves_no_temp_files(self, repos, tmp_path, private_tmp):
+        """评论 3：Sourcery 拒绝（set -e 中途退出）后无暂存文件泄漏。"""
         up, dn, _ = repos
         fake = tmp_path / "bin"
         fake.mkdir()
@@ -407,15 +406,15 @@ class TestPR105ReviewRegressions:
         (fake / "sourcery").chmod(0o755)
         env = _run_env()
         env["PATH"] = f"{fake}:{env['PATH']}"
-        tmp_root = os.environ.get("TMPDIR") or "/tmp"
-        before = (set(glob.glob(f"{tmp_root}/.factory-stage.*"))
-                  | set(glob.glob(f"{tmp_root}/.factory-dist.*")))
+        env["TMPDIR"] = str(private_tmp)  # 泄漏断言隔离，见 conftest private_tmp
+        before = (set(glob.glob(f"{private_tmp}/.factory-stage.*"))
+                  | set(glob.glob(f"{private_tmp}/.factory-dist.*")))
         proc = self._run(dn, str(up), "--apply", "--anchor", "main", env=env)
         assert proc.returncode == 1, "追平后闸返回 1 → 拦截退出"
         assert "Sourcery 回归闸拦截" in proc.stderr
-        after = (set(glob.glob(f"{tmp_root}/.factory-stage.*"))
-                 | set(glob.glob(f"{tmp_root}/.factory-dist.*")))
-        assert after - before == set(), "中途退出不得泄漏 /tmp 暂存文件（评论 3）"
+        after = (set(glob.glob(f"{private_tmp}/.factory-stage.*"))
+                 | set(glob.glob(f"{private_tmp}/.factory-dist.*")))
+        assert after - before == set(), "中途退出不得泄漏暂存文件（评论 3）"
 
 class TestPR120ReviewRegressions:
     """PR #120 审查评论回归：mktemp 暂存泄漏——trap 晚于首个 mktemp。"""
@@ -426,7 +425,7 @@ class TestPR120ReviewRegressions:
             cwd=dn, env=env or _run_env(), capture_output=True, text=True,
         )
 
-    def test_second_mktemp_failure_leaks_no_dist_file(self, repos, tmp_path):
+    def test_second_mktemp_failure_leaks_no_dist_file(self, repos, tmp_path, private_tmp):
         """review 1：第二个 mktemp（STAGE_FILE）失败时首个（DIST_FILE）
         不得泄漏——trap 须紧随首个 mktemp 安装（修复前两个 mktemp 均完成
         后才装 trap，第二个失败即泄漏）。计数 fake：首调放行次调失败。"""
@@ -441,11 +440,11 @@ class TestPR120ReviewRegressions:
         (fake / "mktemp").chmod(0o755)
         env = _run_env()
         env["PATH"] = f"{fake}:{env['PATH']}"
-        tmp_root = os.environ.get("TMPDIR") or "/tmp"
-        before = set(glob.glob(f"{tmp_root}/.factory-dist.*"))
+        env["TMPDIR"] = str(private_tmp)  # 泄漏断言隔离，见 conftest private_tmp
+        before = set(glob.glob(f"{private_tmp}/.factory-dist.*"))
         proc = self._run(dn, str(up), "--check", "--anchor", "main", env=env)
         assert proc.returncode != 0, "第二个 mktemp 失败须中断脚本"
-        after = set(glob.glob(f"{tmp_root}/.factory-dist.*"))
+        after = set(glob.glob(f"{private_tmp}/.factory-dist.*"))
         assert after - before == set(), "第二个 mktemp 失败不得泄漏首个暂存（review 1）"
 
 class TestSelfOverwriteSafety:

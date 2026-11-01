@@ -17,7 +17,7 @@
 #   --repo <path>  目标仓（默认：当前目录所属仓）——中心仓巡检以此驱动
 #                  下游追平，始终执行中心版脚本，免疫下游副本滞后
 #   --commit       仅与 --apply 组合：追平产物+锚点+blame-ignore 以单提交
-#                  落库（factory: 上游同步追平（<sha9>）），落在当前分支不推送；
+#                  落库（chore(factory): 上游同步追平（<sha9>）），落在当前分支不推送；
 #                  提交无法含自身 SHA，blame-ignore 滞后一条（本次记上次）
 #
 # 退出码: 0=干净/已同步  1=有漂移（--check）或应用失败  2=用法/上游不可用
@@ -145,8 +145,22 @@ _sr_clean() {  # 0=干净 1=有 issue 2=CLI 异常
 SR_GATE_ON=0
 if [ "$MODE" = apply ] && command -v sourcery >/dev/null 2>&1; then
   SR_GATE_ON=1
-  _sr_clean && echo "Sourcery 回归闸基线: .factory 干净" \
-            || { echo "Sourcery 回归闸基线: .factory 已有 issue——先清零再追平（闸口径=PR gate）" >&2; exit 2; }
+  # 版本口径提示（issue #104）：本地 CLI 版本与上游 CI pin 不一致时，
+  # 上游已清零的快照本地可报 issue——先排除口径差异再查真实回归。
+  # rc 区分（Sourcery 审查）：1=有 issue（才可能是版本口径差异）；
+  # ≥2=CLI 执行失败，误诊为版本漂移会误导排查
+  if _sr_clean; then
+    echo "Sourcery 回归闸基线: .factory 干净"
+  else
+    sr_status=$?
+    if [ "$sr_status" -eq 1 ]; then
+      echo "Sourcery 回归闸基线: .factory 已有 issue——先清零再追平（闸口径=PR gate）。" \
+           "若上游 CI 曾全绿：疑似本地 CLI 版本口径差异（本地 $(sourcery --version 2>/dev/null || echo '?') vs 上游 sourcery-review-gate.yml 的 pin），对齐版本后复跑再定" >&2
+    else
+      echo "Sourcery 回归闸执行失败（CLI 异常，退出码=$sr_status）——请检查本地 CLI 后重试" >&2
+    fi
+    exit 2
+  fi
 fi
 
 # 上游 mode+blob（git show 丢 mode，覆盖后须恢复执行位）
@@ -171,7 +185,7 @@ while IFS=$'\t' read -r kind rel; do
     echo "  [$kind] $rel: 本地缺失"
     [ "$kind" = full ] && DRIFT=1
     if [ "$MODE" = apply ] && [ "$kind" = full ]; then
-      mkdir -p "$(dirname "$dst")" # 缺失父目录先建（wop-skills：tests/ 整缺，重定向即崩）
+      mkdir -p "$(dirname "$dst")" # 缺失父目录先建（xx-skills：tests/ 整缺，重定向即崩）
       # tmp+mv 原子替换（#103）：$dst 可能是运行中脚本自身——bash 惰性逐段
       # 读源文件，`> "$dst"` 直写截断同 inode，旧读位移落在新内容中途即
       # syntax error 半同步态；同目录 rename 换 inode，旧 inode 保活至跑完
@@ -268,10 +282,10 @@ PY
       git -C "$REPO" add -- "$IGNORE"
       PREV_SYNC="$(git -C "$REPO" log -1 --format=%H -- "$LOCKFILE" 2>/dev/null || true)"
       if [ -n "$PREV_SYNC" ] && ! grep -q "^${PREV_SYNC}$" "$IGNORE" 2>/dev/null; then
-        printf '# factory: 上游同步追平（%s）\n%s\n' "${HEAD_SHA:0:9}" "$PREV_SYNC" >> "$IGNORE"
+        printf '# chore(factory): 上游同步追平（%s）\n%s\n' "${HEAD_SHA:0:9}" "$PREV_SYNC" >> "$IGNORE"
         git -C "$REPO" add -- "$IGNORE"
       fi
-      git -C "$REPO" commit -q -m "factory: 上游同步追平（${HEAD_SHA:0:9}）"
+      git -C "$REPO" commit -q -m "chore(factory): 上游同步追平（${HEAD_SHA:0:9}）"
       echo "已提交: $(git -C "$REPO" rev-parse --short HEAD)（当前分支，不推送）"
     fi
     # 无条件设置（幂等，绝对路径）：无变更分支此前直接跳过，文件在而
