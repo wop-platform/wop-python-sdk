@@ -1,4 +1,4 @@
-"""upstream-sync-check.sh 退出码契约回归（wop-skills PR#14 Sourcery 评论 1）。
+"""upstream-sync-check.sh 退出码契约回归（xx-skills PR#14 Sourcery 评论 1）。
 
 缺陷：sync --check 的致命 rc=2（用法/上游不可用/锚点不可解析）原被 `&& {}`
 短路吞掉——输出不带 [local]/[full] 标记时落入收尾分支，以「仅 local 面漂移」
@@ -12,6 +12,7 @@ exit 0 误报无漂移，调用方（dispatch）把致命检查失败当无事�
 凭据面用 fake hosting.py 顶替（auth ok 恒 0，其余调用计数 + 非 0）——
 与 gitenv PATH 白名单配合，测试链零出网。
 """
+from __future__ import annotations
 
 import json
 import subprocess
@@ -83,10 +84,14 @@ def synced(tmp_path: Path):
 
 
 class TestSyncRcContract:
-    def _run(self, dn: Path, *args: str) -> subprocess.CompletedProcess:
+    def _run(self, dn: Path, *args: str, extra_env: dict | None = None) -> subprocess.CompletedProcess:
+        # 夹具仓无 origin remote，基线拒猜 fail-closed（#133 收口）会提前
+        # exit 2——显式注入 env 级基线，保持测试聚焦 rc 契约矩阵
+        env = git_env({"FACTORY_BASE_BRANCH": "main"})
+        env.update(extra_env or {})
         return subprocess.run(
             ["bash", str(dn / ".factory/upstream-sync-check.sh"), *args],
-            cwd=dn, env=git_env(), capture_output=True, text=True,
+            cwd=dn, env=env, capture_output=True, text=True,
         )
 
     def test_clean_reports_no_action(self, synced):
@@ -115,6 +120,17 @@ class TestSyncRcContract:
         lines = calls.read_text().splitlines()
         assert all("auth" in line for line in lines), f"rc=2 不得触发 issue/PR 流: {lines}"
 
+    def test_base_branch_fail_closed_without_origin_head(self, synced):
+        """#133 收口：无 env 且夹具仓无 origin/HEAD → 拒猜基线 exit 2，
+        先于任何远端副作用（fake hosting 仅见 auth 探测）。"""
+        _, dn, calls = synced
+        proc = self._run(dn, extra_env={"FACTORY_BASE_BRANCH": ""})
+        assert proc.returncode == 2
+        assert "issue #133" in proc.stderr
+        # 基线块先于凭据探测：零 hosting 调用（连 auth 探测都不触发）
+        assert not calls.exists(), \
+            f"基线 fail-closed 须先于任何 hosting 调用（含凭据探测）: {calls}"
+
     def test_full_drift_dryrun_exits_1(self, synced):
         """full 漂移 rc=1 语义不回归：--dry-run 报告并 exit 1（人工介入信号）。"""
         up, dn, calls = synced
@@ -125,3 +141,64 @@ class TestSyncRcContract:
         assert "[dry-run] full 漂移存在" in proc.stdout
         lines = calls.read_text().splitlines()
         assert all("auth" in line for line in lines), f"dry-run 不得触发远端命令: {lines}"
+
+
+class TestDispatchRootRepoSkip:
+    """调用方 factory_lib._upstream_sync_check 根仓免跑契约（2026-09-05）。
+
+    噪音 C 溯源：根仓锁文件缺 upstream 字段（本仓是源仓，无上游可同步），
+    但 dispatch 每轮仍跑 upstream-sync-check.sh → 脚本 exit 2 刷日志 103 轮。
+    裁决：根仓免跑（锁缺 upstream = 无上游声明），fork 侧 sync --apply
+    写锁带 upstream=根仓 URL → 走正常检查自动追平。"""
+    import factory_lib
+
+    def _mk(self, tmp_path, lock: dict | None):
+        from types import SimpleNamespace
+        factory = tmp_path / ".factory"
+        factory.mkdir()
+        check = factory / "upstream-sync-check.sh"
+        check.write_text("#!/usr/bin/env bash\necho invoked > $(dirname $0)/invoked-marker\nexit 0\n", encoding="utf-8")
+        check.chmod(0o755)
+        if lock is not None:
+            (factory / "upstream-lock.json").write_text(
+                json.dumps(lock, ensure_ascii=False), encoding="utf-8")
+        return SimpleNamespace(factory=factory)
+
+    def test_root_repo_skips_without_upstream_field(self, tmp_path, capsys):
+        """根仓：锁缺 upstream 字段 → 免跑（脚本不被调、无噪音、rc 0）。"""
+        cfg = self._mk(tmp_path, {"anchor": "20f6a63"})
+        assert self.factory_lib._upstream_sync_check(cfg) == 0
+        assert "根仓无上游声明，免上游同步" in capsys.readouterr().out
+        assert not (cfg.factory / "invoked-marker").exists(), "根仓不得调用 check 脚本"
+
+    def test_fork_repo_runs_check_with_upstream_field(self, tmp_path, capsys):
+        """fork：锁带 upstream=根仓 URL → 正常跑脚本（自动追平不回归）。"""
+        cfg = self._mk(tmp_path, {"anchor": "x", "upstream": "https://github.com/im47cn/awesome-rules"})
+        assert self.factory_lib._upstream_sync_check(cfg) == 0
+        assert "上游同步已推进" in capsys.readouterr().out
+        assert (cfg.factory / "invoked-marker").exists(), "fork 侧必须跑 check 脚本"
+
+    def test_corrupt_lock_skips_with_disclosure(self, tmp_path, capsys):
+        """坏 JSON 锁：不可读 → 免跑 + 披露需人工处置（不静默、不刷噪音）。"""
+        cfg = self._mk(tmp_path, None)
+        (cfg.factory / "upstream-lock.json").write_text("{broken", encoding="utf-8")
+        assert self.factory_lib._upstream_sync_check(cfg) == 0
+        assert "upstream-lock.json 不可读" in capsys.readouterr().out
+        assert not (cfg.factory / "invoked-marker").exists()
+
+    def test_valid_json_non_dict_lock_skips_with_disclosure(self, tmp_path, capsys):
+        """sourcery issue(bug_risk)：合法 JSON 非对象（[]/null/"bad"）→ .get 崩——
+        须校验 dict 形态后披露免跑（不 AttributeError）。"""
+        cfg = self._mk(tmp_path, None)
+        (cfg.factory / "upstream-lock.json").write_text("[]", encoding="utf-8")
+        assert self.factory_lib._upstream_sync_check(cfg) == 0
+        assert "不可读或非对象" in capsys.readouterr().out
+        assert not (cfg.factory / "invoked-marker").exists(), "非对象锁不得调用 check 脚本"
+
+    def test_env_declared_upstream_still_runs_check(self, tmp_path, capsys, monkeypatch):
+        """sourcery issue(broader_impact)：锁缺 upstream 但 FACTORY_UPSTREAM env 已设
+        （check 脚本 L45 支持的合法上游源）→ 不得误免跑，须调脚本。"""
+        monkeypatch.setenv("FACTORY_UPSTREAM", "https://github.com/im47cn/awesome-rules")
+        cfg = self._mk(tmp_path, {"anchor": "x"})
+        assert self.factory_lib._upstream_sync_check(cfg) == 0
+        assert (cfg.factory / "invoked-marker").exists(), "env 声明上游的 fork 必须跑 check 脚本"
