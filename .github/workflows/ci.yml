@@ -20,12 +20,21 @@ jobs:
     # 轴 1：Python 解释器矩阵（3.9 = 声明下界（spec §3 契约）；3.14 = 当前最新稳定），依赖取最新
     # 轴 2：OS 矩阵（ubuntu x86_64 + macOS arm64）——cryptography/gmssl 走各平台轮子，
     # 双 OS 钉住平台相关行为漂移（interop 消费与 OS 矩阵同基线，跨仓拉齐要求）
+    # 例外：ubuntu-latest 已升 26.04，而 actions/python-versions 不再为 26.04 构建 3.9（3.9 于 2025-10
+    # EOL，最新构建只到 24.04），setup-python 直接报 "version not found"。故 3.9 钉 ubuntu-24.04，
+    # 其余版本仍走 ubuntu-latest。下界提升到 ≥3.10 时可整块删除。
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: ubuntu-24.04
+            python-version: "3.9"
+        exclude:
+          - os: ubuntu-latest
+            python-version: "3.9"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -49,7 +58,8 @@ jobs:
     # （“声明即 tested”）。--no-deps 防 pip 把 pin 抬回最新造成假绿。
     # cryptography/gmssl 被全部 214 个用例真实执行（协议核心走真库）；
     # httpx/requests 适配器测试走 fake 模块注入，此处 pin 验证 extras 可解析安装。
-    runs-on: ubuntu-latest
+    # 与 test 矩阵 3.9 同因钉 24.04（26.04 无 3.9 构建）；下界提升后改回 ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
