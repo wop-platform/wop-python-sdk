@@ -10,7 +10,6 @@ D5 纪律（入向测试的平台侧构造，禁止复用被测出向路径）�
 import base64
 import hashlib
 import json
-import os
 import re
 
 import pytest

@@ -3,7 +3,7 @@
 import pytest
 
 from wop_sdk.errors import SuiteParseError, UnsupportedSuiteError
-from wop_sdk.suites import Suite, parse_suite
+from wop_sdk.suites import parse_suite
 
 
 class TestParsePositive:

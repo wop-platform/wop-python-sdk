@@ -35,8 +35,8 @@
   "review_basis": "CONTRIBUTING.md 规格引用（wop-specs/docs/specs/wop-sdk-spec.md）+ 既有测试形态",
   "final_gate_cmd": "scripts/run_tests.sh --no-lock",
   "pr_review_skills": [],
-  "upstream_repo": "im47cn/awesome-rules",
-  "upstream_path": "~/sources/awesome-rules",
+  "upstream_repo": "im47cn/awesome-factory",
+  "upstream_path": "~/sources/awesome-factory",
   "port_point": "011d8d8c",
   "feedback_branch_prefix": "feedback/wop-python-sdk"
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # commit message 规范校验（awesome-rules tools/git 分发，由 lefthook 调用）
 # 用法: bash .lefthook/commitmsg-check.sh <msg-file>
-# 单一规则源: commitlint + 项目内 commitlint.config.js；缺 commitlint 时自动安装（一次性）。
+# 单一规则源: commitlint + 项目内 commitlint.config.cjs；缺 commitlint 时自动安装（一次性）。
 # 无 node/npm 时提示后放行 —— commit 钩子不阻塞环境问题，只拦规范违规。
 set -u
 MSG_FILE="${1:-}"
@@ -34,8 +34,8 @@ if [ -z "$CL" ]; then
 fi
 
 # 规则配置是分发物之一，缺失说明未跑 install.sh
-[ -f "$(git rev-parse --show-toplevel)/commitlint.config.js" ] || {
-  echo "⚠ [commitmsg] 缺 commitlint.config.js，请跑 awesome-rules tools/git/install.sh；本次放行"
+[ -f "$(git rev-parse --show-toplevel)/commitlint.config.cjs" ] || {
+  echo "⚠ [commitmsg] 缺 commitlint.config.cjs，请跑 awesome-rules tools/git/install.sh；本次放行"
   exit 0
 }
 

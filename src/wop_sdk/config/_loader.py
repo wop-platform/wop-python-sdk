@@ -6,7 +6,7 @@ import os
 import threading
 from importlib import resources
 from pathlib import Path
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Dict, Union
 
 from ..errors import ConfigurationError
 from ._models import WopSdkConfig

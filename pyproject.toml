@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wop-python-sdk"
-version = "0.2.0"
+version = "0.2.1"
 description = "WOP 商户侧官方 Python SDK：协议核心（签名/摘要/数字信封/验签解密）+ 可插拔 HTTP 适配层"
 readme = "README.md"
 license = { text = "MIT" }
@@ -64,3 +64,16 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 precision = 2
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+# .factory：从上游同步的 vendored 工厂副本，不在本仓维护，排除以免同步覆盖与噪声
+extend-exclude = [".factory"]
+
+[tool.ruff.lint]
+# E4/E7/E9/F：语法/未定义名/未用导入变量/重定义等真实错误。
+# E741/E702/E731 是历史代码纯风格（歧义单字母名、分号多语句、lambda 赋值——后者
+# 是模块级公共 API `request_id_generator`，改为 def 会动 griffe API 快照），基线忽略。
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E741", "E702", "E731"]
