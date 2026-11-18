@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
-from typing import Dict, List
+from typing import Dict, List  # noqa: F401 — List 是 wildcard 导出的 API 别名（tests/api_snapshot.json 记录），非内部使用
 
 from .errors import ConfigurationError
 from .transports import Transport, UrllibTransport

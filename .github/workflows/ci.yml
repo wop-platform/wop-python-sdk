@@ -149,3 +149,17 @@ jobs:
         run: pip install griffe==1.14.0
       - name: API snapshot gate (regenerate to temp file, git diff --exit-code)
         run: python3 scripts/check-api-snapshot.py
+
+  # ruff 静态检查（E4/E7/E9/F；配置见 pyproject.toml [tool.ruff]，vendored .factory
+  # 已排除）。版本锁定保证检查集稳定；纯静态、秒级。
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned ruff
+        run: pip install ruff==0.17.3
+      - name: ruff check
+        run: ruff check .

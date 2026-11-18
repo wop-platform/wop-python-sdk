@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any, Dict, List, Mapping, MutableMapping, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 from ..errors import ConfigurationError
 from ._models import DEFAULT_EXPIRED_SECONDS, HttpClientSettings, WopSdkConfig

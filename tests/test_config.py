@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
 import threading
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
 from wop_sdk.client import WopClient, WopConfig
-from wop_sdk.config import HttpClientSettings, WopSdkConfig, clear_cache, load, load_default
+from wop_sdk.config import WopSdkConfig, clear_cache, load, load_default
 from wop_sdk.config._parser import parse_config_json
 from wop_sdk.config._validator import join_url, validate_api_path, validate_gateway_url
 from wop_sdk.errors import ConfigurationError, WopGatewayResponseError

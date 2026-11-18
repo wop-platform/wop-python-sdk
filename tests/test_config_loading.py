@@ -5,7 +5,6 @@
 transport_discovery 59%），PR 新增加载链未带测试。本文件按 term-missing 行号逐段闭合。
 """
 import json
-import sys
 from pathlib import Path
 
 import pytest
