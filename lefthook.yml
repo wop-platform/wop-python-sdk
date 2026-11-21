@@ -26,9 +26,9 @@ pre-push:
     # Sourcery 硬闸: 仓库 opt-in（.sourcery.yaml 存在）才启用，语言文件 push 前 review --check
     sourcery-gate:
       run: bash .lefthook/sourcery-gate.sh {push_files}
-    # 变异分红线: src/main 生产代码变更时按模块跑 PIT（阈值见各模块 pom mutationThreshold，无 pitest 配置则提示跳过）
+    # 变异分红线: 无参=本地增量档（只变异本次变更类）/ --ci=CI 全量档
     mutation-gate:
-      run: bash .lefthook/mutation-gate.sh {push_files}
+      run: bash .lefthook/mutation-gate.sh
     # CodeRabbit 建议性评审: 仓库 opt-in（.coderabbit.yaml 存在）才启用，push 前 --light 评审已提交变更（不拦 push）
     coderabbit-gate:
       run: bash .lefthook/coderabbit-gate.sh {push_files}
